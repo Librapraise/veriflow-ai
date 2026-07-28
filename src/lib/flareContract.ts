@@ -22,17 +22,12 @@ export interface OnChainAnchorResult {
 export async function anchorVerificationOnFlare(
   report: VerificationReport
 ): Promise<OnChainAnchorResult> {
-  const fallbackTxHash = `0x${Array.from(crypto.getRandomValues(new Uint8Array(32)))
-    .map(b => b.toString(16).padStart(2, '0')).join('')}`;
-  const fallbackExplorerUrl = `${FLARE_COSTON2_CONFIG.blockExplorerUrls[0]}/tx/${fallbackTxHash}`;
-
   try {
     const signer = await getWeb3Signer();
     if (!signer) {
       return {
-        success: true,
-        txHash: fallbackTxHash,
-        explorerUrl: fallbackExplorerUrl
+        success: false,
+        errorMessage: 'Wallet not connected — verification is cryptographically signed off-chain only.'
       };
     }
 
@@ -48,7 +43,7 @@ export async function anchorVerificationOnFlare(
       signer
     );
 
-    // Send real transaction on Flare Coston2 Testnet
+    // Broadcast real transaction to Flare Coston2 Testnet
     const tx = await contract.anchorVerification(
       verIdBytes32,
       claimHashBytes32,
@@ -67,11 +62,10 @@ export async function anchorVerificationOnFlare(
       blockNumber: receipt.blockNumber
     };
   } catch (err: any) {
-    console.warn('Flare Coston2 on-chain anchoring fallback:', err);
+    console.warn('Flare Coston2 on-chain anchoring skipped (contract not deployed or tx rejected):', err?.message);
+    // Return no txHash — the verification is still cryptographically valid off-chain
     return {
-      success: true,
-      txHash: fallbackTxHash,
-      explorerUrl: fallbackExplorerUrl,
+      success: false,
       errorMessage: err?.message
     };
   }

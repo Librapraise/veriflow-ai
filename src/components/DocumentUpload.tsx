@@ -503,7 +503,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
           </div>
 
           {/* Flare Coston2 On-Chain Proof */}
-          {completedReport.explorerUrl && (
+          {completedReport.explorerUrl ? (
             <div className="p-4 rounded-2xl bg-gradient-to-r from-teal-950/40 to-slate-950 border border-teal-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 overflow-hidden">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-lg bg-teal-500/20 flex items-center justify-center shrink-0">
@@ -523,6 +523,18 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                 <ExternalLink className="w-3.5 h-3.5" />
                 View on Flare Explorer
               </a>
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-700/50 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-4 h-4 text-teal-400" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-300">Cryptographic Proof Signed Off-Chain</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Connect MetaMask on Flare Coston2 Testnet with C2FLR gas to anchor this proof on-chain.
+                </p>
+              </div>
             </div>
           )}
 

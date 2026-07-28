@@ -20,7 +20,7 @@ export const FLARE_COSTON2_CONFIG = {
 };
 
 // Deployed VeriFlowRegistry Contract Address on Flare Coston2 Testnet
-export const VERIFLOW_REGISTRY_ADDRESS = '0xFBD03628412D82BcD94a1CdA61D865fBB5d41c47'; // Default initial fallback address
+export const VERIFLOW_REGISTRY_ADDRESS = '0xFc502748a4A8f28e00BA93E05F8fb98b3Abc79CD'; // Default initial fallback address
 
 export const VERIFLOW_REGISTRY_ABI = [
   "function owner() view returns (address)",
@@ -28,6 +28,6 @@ export const VERIFLOW_REGISTRY_ABI = [
   "function anchorVerification(bytes32 verificationId, bytes32 claimHash, bool result, bytes32 attestationHash, bytes signature) external",
   "function revokeVerification(bytes32 verificationId) external",
   "function verifyRecord(bytes32 verificationId) external view returns (bool exists, bool isValid, bool result, uint256 timestamp, bytes32 attestationHash)",
-  "event VerificationAnchored(bytes32 indexed verificationId, bytes32 indexed claimHash, bool result, bytes32 attestationHash, uint256 timestamp)",
+  "event VerificationAnchored(bytes32 indexed verificationId, bytes32 indexed claimHash, bool result, bytes32 attestationHash, address indexed caller, uint256 timestamp)",
   "event VerificationRevoked(bytes32 indexed verificationId, uint256 timestamp)"
 ];

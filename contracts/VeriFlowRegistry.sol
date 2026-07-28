@@ -29,6 +29,7 @@ contract VeriFlowRegistry {
         bytes32 indexed claimHash,
         bool result,
         bytes32 attestationHash,
+        address indexed caller,
         uint256 timestamp
     );
     event VerificationRevoked(bytes32 indexed verificationId, uint256 timestamp);
@@ -54,7 +55,7 @@ contract VeriFlowRegistry {
         bool result,
         bytes32 attestationHash,
         bytes memory signature
-    ) external onlyOwner {
+    ) external {
         require(verifications[verificationId].timestamp == 0, "VeriFlowRegistry: verification already anchored");
 
         verifications[verificationId] = VerificationRecord({
@@ -67,7 +68,7 @@ contract VeriFlowRegistry {
             isRevoked: false
         });
 
-        emit VerificationAnchored(verificationId, claimHash, result, attestationHash, block.timestamp);
+        emit VerificationAnchored(verificationId, claimHash, result, attestationHash, msg.sender, block.timestamp);
     }
 
     function revokeVerification(bytes32 verificationId) external onlyOwner {
