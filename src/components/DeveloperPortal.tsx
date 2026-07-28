@@ -20,7 +20,9 @@ export const DeveloperPortal: React.FC = () => {
   // API Playground State
   const [endpoint, setEndpoint] = useState<string>('/v1/verify-age');
   const [claimType, setClaimType] = useState<ClaimType>('age_above_18');
-  const [walletAddress] = useState<string>('0x71C7656EC7ab88b098defB751B7401B5f6d8976F');
+  const [walletAddress, setWalletAddress] = useState<string>(
+    VeriFlowStore.getUserSession()?.address || '0x17f2B0b206884f122ABFD42B8d5d547e7F6ce267'
+  );
   const [threshold, setThreshold] = useState<number>(18);
   
   const [isExecutingApi, setIsExecutingApi] = useState<boolean>(false);
@@ -189,7 +191,7 @@ export const DeveloperPortal: React.FC = () => {
             </div>
 
             {/* Form Controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <div>
                 <label className="block text-slate-400 font-bold mb-1">Target Endpoint</label>
                 <select
@@ -206,6 +208,17 @@ export const DeveloperPortal: React.FC = () => {
                   <option value="/v1/verify-income">POST /v1/verify-income</option>
                   <option value="/v1/verify-degree">POST /v1/verify-degree</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">Target Wallet Address</label>
+                <input
+                  type="text"
+                  value={walletAddress}
+                  onChange={(e) => setWalletAddress(e.target.value)}
+                  placeholder="0x..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-200 font-mono truncate"
+                />
               </div>
 
               <div>
