@@ -3,9 +3,11 @@
 > **Verify Facts. Not Documents.**  
 > Powered by **Flare Confidential Compute** (Trusted Execution Environments).
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-veriflow--ai.vercel.app-10b981?style=for-the-badge&logo=vercel)](https://veriflow-ai.vercel.app)
 [![Flare Network](https://img.shields.io/badge/Flare-Confidential_Compute-teal?style=for-the-badge&logo=ethereum)](https://flare.network)
 [![Hackathon](https://img.shields.io/badge/Hackathon-Flare_Summer_Signal_2026-emerald?style=for-the-badge)](https://flare.network)
 [![TEE Protection](https://img.shields.io/badge/TEE-Hardware_Attested-blue?style=for-the-badge)](https://flare.network)
+
 
 ---
 
