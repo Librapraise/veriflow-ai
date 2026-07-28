@@ -76,10 +76,10 @@ e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-800 bg-slate-950/50 px-6 pt-2 space-x-2">
+        <div className="flex border-b border-slate-800 bg-slate-950/50 px-4 sm:px-6 pt-2 space-x-2 overflow-x-auto no-scrollbar whitespace-nowrap">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-all ${
+            className={`px-3 sm:px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-all shrink-0 ${
               activeTab === 'overview'
                 ? 'bg-slate-900 text-teal-400 border-t-2 border-teal-500'
                 : 'text-slate-400 hover:text-slate-200'
@@ -89,7 +89,7 @@ e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0
           </button>
           <button
             onClick={() => setActiveTab('hex')}
-            className={`px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-all ${
+            className={`px-3 sm:px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-all shrink-0 ${
               activeTab === 'hex'
                 ? 'bg-slate-900 text-teal-400 border-t-2 border-teal-500'
                 : 'text-slate-400 hover:text-slate-200'
@@ -99,7 +99,7 @@ e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0
           </button>
           <button
             onClick={() => setActiveTab('failclosed')}
-            className={`px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-all ${
+            className={`px-3 sm:px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-all shrink-0 ${
               activeTab === 'failclosed'
                 ? 'bg-slate-900 text-amber-400 border-t-2 border-amber-500'
                 : 'text-slate-400 hover:text-slate-200'

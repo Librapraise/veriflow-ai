@@ -436,10 +436,10 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
               <button
                 onClick={copyShareLink}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center space-x-2 transition-all"
+                className="w-full sm:w-auto justify-center px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center space-x-2 transition-all"
               >
                 {copiedLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
                 <span>{copiedLink ? 'Link Copied!' : 'Share Verification'}</span>
@@ -447,7 +447,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
               <button
                 onClick={() => setCompletedReport(null)}
-                className="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition-all"
+                className="w-full sm:w-auto text-center px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition-all"
               >
                 New Verification
               </button>
@@ -459,7 +459,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
             <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
               <span className="text-xs text-slate-400">Claim Result</span>
               <div className="text-xl font-extrabold text-emerald-400 flex items-center space-x-2">
-                <CheckCircle2 className="w-5 h-5" />
+                <CheckCircle2 className="w-5 h-5 shrink-0" />
                 <span>TRUE (Verified)</span>
               </div>
             </div>
@@ -467,38 +467,38 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
             <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
               <span className="text-xs text-slate-400">Attestation Status</span>
               <div className="text-sm font-bold text-teal-300 flex items-center space-x-1.5">
-                <Cpu className="w-4 h-4 text-teal-400" />
+                <Cpu className="w-4 h-4 text-teal-400 shrink-0" />
                 <span>KMS Attestation Passed</span>
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1 overflow-hidden">
               <span className="text-xs text-slate-400">Verifier Signature</span>
-              <div className="text-xs font-mono text-slate-300 truncate">
+              <div className="text-xs font-mono text-slate-300 truncate" title={completedReport.signature}>
                 {completedReport.signature}
               </div>
             </div>
           </div>
 
           {/* Independent Verification Banner */}
-          <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-            <div className="flex items-center justify-between">
+          <div className="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                <Key className="w-4 h-4 text-teal-400" />
+                <Key className="w-4 h-4 text-teal-400 shrink-0" />
                 Cryptographic Signature Proof
               </h4>
               <button
                 onClick={onOpenAttestationModal}
-                className="text-xs text-teal-400 hover:underline font-bold"
+                className="text-xs text-teal-400 hover:underline font-bold text-left sm:text-right"
               >
                 View TEE Quote Details
               </button>
             </div>
 
-            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 font-mono text-xs text-slate-300 space-y-1">
-              <div><strong className="text-slate-500">Claim Payload:</strong> {completedReport.type}</div>
-              <div><strong className="text-slate-500">Hash Commitment:</strong> {completedReport.hash}</div>
-              <div><strong className="text-slate-500">Enclave Signature:</strong> <span className="text-emerald-400">{completedReport.signature}</span></div>
+            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 font-mono text-[11px] sm:text-xs text-slate-300 space-y-2 overflow-hidden">
+              <div className="flex flex-wrap gap-1"><strong className="text-slate-500">Claim Payload:</strong> <span>{completedReport.type}</span></div>
+              <div className="break-all"><strong className="text-slate-500">Hash Commitment:</strong> {completedReport.hash}</div>
+              <div className="break-all"><strong className="text-slate-500">Enclave Signature:</strong> <span className="text-emerald-400">{completedReport.signature}</span></div>
             </div>
           </div>
 
