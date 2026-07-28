@@ -336,15 +336,39 @@ export class VeriFlowStore {
       doc = docs[0]; // Fallback to primary demo document
     }
 
+    // Generate a valid AES-256-GCM encrypted payload for the mock demo API request
+    const mockFileBuffer = new TextEncoder().encode('%PDF-1.4 Mock VeriFlow AI Document Content');
+    const rawKeyBuffer = new Uint8Array(32);
+    crypto.getRandomValues(rawKeyBuffer);
+    const wrappedKeyHex = Array.from(rawKeyBuffer).map(b => b.toString(16).padStart(2, '0')).join('');
+
+    const ivBytes = new Uint8Array(12);
+    crypto.getRandomValues(ivBytes);
+    const ivHex = Array.from(ivBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+
+    const aesKey = await crypto.subtle.importKey(
+      'raw',
+      rawKeyBuffer.buffer,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt']
+    );
+    const encryptedBuf = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: ivBytes },
+      aesKey,
+      mockFileBuffer
+    );
+    const ciphertextBase64 = btoa(String.fromCharCode(...new Uint8Array(encryptedBuf)));
+
     // Execute TEE Enclave verification
     const report = await executeConfidentialComputeJob({
       claimType: params.claimType,
-      documentType: doc.type,
-      documentId: doc.id,
-      userId: params.walletAddress || doc.userId,
-      ciphertextBase64: 'SGVsbG8gVmVyaUZsb3cgQ09ORklERU5USUFMIENPTVBVVEU=',
-      ivHex: doc.ivHex,
-      wrappedKeyHex: doc.dataKeyWrappedHex,
+      documentType: doc ? doc.type : 'passport',
+      documentId: doc ? doc.id : 'doc_demo_api',
+      userId: params.walletAddress || '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+      ciphertextBase64,
+      ivHex,
+      wrappedKeyHex,
       customThreshold: params.threshold
     });
 
