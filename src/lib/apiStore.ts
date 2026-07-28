@@ -21,14 +21,14 @@ const STORAGE_KEYS = {
   LOGS: 'veriflow_api_logs'
 };
 
-// Initial Seed Demo Data for an instant, rich experience out of the box
+// Default initial session (Disconnected state so Connect Wallet button displays prominently)
 const DEFAULT_USER: UserSession = {
-  address: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-  isConnected: true,
-  chainId: 14, // Flare Coston2 / Testnet
-  trustScore: 94,
-  documentsCount: 3,
-  verificationsCount: 4
+  address: '',
+  isConnected: false,
+  chainId: 114, // Flare Coston2 / Testnet
+  trustScore: 85,
+  documentsCount: 0,
+  verificationsCount: 0
 };
 
 const DEFAULT_DOCUMENTS: EncryptedDocumentMetadata[] = [

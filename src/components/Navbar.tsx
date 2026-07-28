@@ -7,8 +7,7 @@ import {
   FileText, 
   BarChart3, 
   Bot, 
-  Lock, 
-  Sparkles
+  Lock
 } from 'lucide-react';
 import type { UserSession } from '../types/veriflow';
 import { requestWalletConnection } from '../lib/siwe';
@@ -59,6 +58,17 @@ export const Navbar: React.FC<NavbarProps> = ({
     } finally {
       setIsAuthenticating(false);
     }
+  };
+
+  const handleDisconnectWallet = () => {
+    setUserSession({
+      address: '',
+      isConnected: false,
+      chainId: 114,
+      trustScore: 0,
+      documentsCount: 0,
+      verificationsCount: 0
+    });
   };
 
   const truncateAddress = (addr: string) => {
@@ -181,10 +191,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                   <span>{truncateAddress(userSession.address)}</span>
                 </div>
-                <div className="hidden sm:flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-teal-500/10 text-teal-300 text-xs font-bold border border-teal-500/20">
-                  <Sparkles className="w-3 h-3 text-teal-400" />
-                  <span>Trust: {userSession.trustScore}/100</span>
-                </div>
+                <button
+                  onClick={handleDisconnectWallet}
+                  className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-rose-500/20 hover:text-rose-300 text-slate-400 text-xs transition-all font-semibold"
+                  title="Disconnect Wallet"
+                >
+                  Disconnect
+                </button>
               </div>
             ) : (
               <button
