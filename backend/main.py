@@ -101,6 +101,17 @@ def generate_signed_verification_response(claim: str, result: bool = True) -> Ve
     VERIFICATIONS_DB[ver_id] = res
     return res
 
+@app.get("/")
+def root():
+    return {
+        "status": "online",
+        "service": "VeriFlow AI Confidential Compute API Gateway",
+        "version": "1.0.0",
+        "documentation": "/docs",
+        "health_check": "/health",
+        "hardware_tee": "Flare Confidential Compute (Intel SGX / AMD SEV TEE)"
+    }
+
 @app.get("/health")
 def health_check():
     return {
