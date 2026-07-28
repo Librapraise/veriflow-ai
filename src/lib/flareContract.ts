@@ -22,17 +22,12 @@ export interface OnChainAnchorResult {
 export async function anchorVerificationOnFlare(
   report: VerificationReport
 ): Promise<OnChainAnchorResult> {
-  const mockTxHash = `0x${Array.from(crypto.getRandomValues(new Uint8Array(32)))
-    .map(b => b.toString(16).padStart(2, '0')).join('')}`;
-  const mockExplorerUrl = `${FLARE_COSTON2_CONFIG.blockExplorerUrls[0]}/tx/${mockTxHash}`;
-
   try {
     const signer = await getWeb3Signer();
     if (!signer) {
       return {
-        success: true,
-        txHash: mockTxHash,
-        explorerUrl: mockExplorerUrl
+        success: false,
+        errorMessage: 'MetaMask wallet not connected. On-chain anchoring skipped.'
       };
     }
 
@@ -48,7 +43,7 @@ export async function anchorVerificationOnFlare(
       signer
     );
 
-    // Send transaction on Flare Coston2
+    // Send real transaction on Flare Coston2 Testnet
     const tx = await contract.anchorVerification(
       verIdBytes32,
       claimHashBytes32,
@@ -67,13 +62,10 @@ export async function anchorVerificationOnFlare(
       blockNumber: receipt.blockNumber
     };
   } catch (err: any) {
-    console.warn('Flare Coston2 on-chain anchoring fallback:', err);
-    
+    console.warn('Flare Coston2 on-chain anchoring notice:', err);
     return {
-      success: true,
-      txHash: mockTxHash,
-      explorerUrl: mockExplorerUrl,
-      errorMessage: err?.message
+      success: false,
+      errorMessage: err?.message || 'Transaction not broadcasted.'
     };
   }
 }
