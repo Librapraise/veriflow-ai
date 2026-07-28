@@ -51,13 +51,16 @@ export async function requestWalletConnection(): Promise<{ address: string; chai
       const chainId = parseInt(chainIdHex, 16) || 14; // Default to Flare Coston2 (14) or Sepolia
       return { address: accounts[0], chainId };
     } catch (err) {
-      console.warn('Wallet connection rejected, defaulting to mock wallet for demo', err);
+      console.warn('Wallet connection rejected or unavailable, generating session wallet for mobile/demo', err);
     }
   }
   
-  // Demo Fallback Wallet for seamless testing without browser extension blocking
+  // Generate dynamic random wallet address when no Web3 provider is available (e.g. mobile standard browsers without injected wallet)
+  const randomBytes = crypto.getRandomValues(new Uint8Array(20));
+  const dynamicAddress = '0x' + Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+
   return {
-    address: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+    address: dynamicAddress,
     chainId: 14 // Flare Testnet
   };
 }
