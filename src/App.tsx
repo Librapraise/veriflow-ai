@@ -11,7 +11,7 @@ import { AttestationViewer } from './components/AttestationViewer';
 import { VeriFlowStore } from './lib/apiStore';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<'landing' | 'dashboard' | 'verify' | 'history' | 'developer' | 'assistant'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'landing' | 'dashboard' | 'verify' | 'history' | 'developer' | 'assistant'>('landing');
   const [userSession, setUserSession] = useState<UserSession>(VeriFlowStore.getUserSession());
   
   const [isAttestationModalOpen, setIsAttestationModalOpen] = useState<boolean>(false);
