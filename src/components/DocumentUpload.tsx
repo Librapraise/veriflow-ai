@@ -525,16 +525,25 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
               </a>
             </div>
           ) : (
-            <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-700/50 flex items-center gap-3">
+            <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-700/50 flex flex-col sm:flex-row items-start sm:items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
                 <ShieldCheck className="w-4 h-4 text-teal-400" />
               </div>
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-slate-300">Cryptographic Proof Signed Off-Chain</p>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Connect MetaMask on Flare Coston2 Testnet with C2FLR gas to anchor this proof on-chain.
+                  To anchor on Flare Coston2, your connected wallet needs free C2FLR testnet gas.
                 </p>
               </div>
+              <a
+                href="https://faucet.flare.network/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto text-center justify-center flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-bold text-xs border border-amber-500/30 transition-all shrink-0"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Get Free C2FLR Gas
+              </a>
             </div>
           )}
 

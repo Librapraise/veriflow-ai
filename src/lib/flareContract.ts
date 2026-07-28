@@ -17,21 +17,94 @@ export interface OnChainAnchorResult {
 }
 
 /**
+ * Ensures the connected wallet is switched to Flare Coston2 Testnet (Chain ID 114).
+ * Works for any MetaMask wallet — not tied to a specific private key.
+ */
+async function ensureCoston2Network(): Promise<boolean> {
+  if (!window.ethereum) return false;
+
+  try {
+    const currentChainIdHex: string = await window.ethereum.request({ method: 'eth_chainId' });
+    const currentChainId = parseInt(currentChainIdHex, 16);
+
+    if (currentChainId === FLARE_COSTON2_CONFIG.chainId) return true; // Already on Coston2
+
+    // Try switching first
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: FLARE_COSTON2_CONFIG.chainIdHex }]
+      });
+      return true;
+    } catch (switchErr: any) {
+      // Chain not added yet (error 4902) — add it
+      if (switchErr.code === 4902 || switchErr?.message?.includes('Unrecognized chain')) {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: FLARE_COSTON2_CONFIG.chainIdHex,
+            chainName: FLARE_COSTON2_CONFIG.chainName,
+            nativeCurrency: FLARE_COSTON2_CONFIG.nativeCurrency,
+            rpcUrls: FLARE_COSTON2_CONFIG.rpcUrls,
+            blockExplorerUrls: FLARE_COSTON2_CONFIG.blockExplorerUrls
+          }]
+        });
+        return true;
+      }
+      console.warn('User declined network switch to Coston2:', switchErr.message);
+      return false;
+    }
+  } catch (e) {
+    console.warn('Could not check/switch network:', e);
+    return false;
+  }
+}
+
+/**
  * Anchors a verification report on the Flare Coston2 blockchain.
+ * Works with any connected MetaMask wallet — not tied to a specific private key.
+ * The connected wallet must have C2FLR testnet tokens for gas.
+ * Get free C2FLR at: https://faucet.flare.network/
  */
 export async function anchorVerificationOnFlare(
   report: VerificationReport
 ): Promise<OnChainAnchorResult> {
   try {
+    // Step 1: Check wallet is connected
+    if (!window.ethereum) {
+      return {
+        success: false,
+        errorMessage: 'No Web3 wallet detected. Open this app inside the MetaMask in-app browser on mobile.'
+      };
+    }
+
+    const accounts: string[] = await window.ethereum.request({ method: 'eth_accounts' });
+    if (!accounts || accounts.length === 0) {
+      return {
+        success: false,
+        errorMessage: 'No wallet connected. Please connect your MetaMask wallet first.'
+      };
+    }
+
+    // Step 2: Auto-switch to Flare Coston2 (works for ANY connected wallet)
+    const onCoston2 = await ensureCoston2Network();
+    if (!onCoston2) {
+      return {
+        success: false,
+        errorMessage: 'Please switch your wallet to Flare Coston2 Testnet (Chain ID 114) to anchor on-chain.'
+      };
+    }
+
+    // Step 3: Get signer (now guaranteed to be on Coston2)
     const signer = await getWeb3Signer();
     if (!signer) {
       return {
         success: false,
-        errorMessage: 'Wallet not connected — verification is cryptographically signed off-chain only.'
+        errorMessage: 'Could not get wallet signer after network switch.'
       };
     }
 
-    // Convert string IDs to bytes32 format for EVM Solidity contract
+    // Step 4: Prepare calldata (bytes32 format for Solidity contract)
     const verIdBytes32 = ethers.keccak256(ethers.toUtf8Bytes(report.id));
     const claimHashBytes32 = report.hash.startsWith('0x') ? report.hash : `0x${report.hash}`;
     const attestationHashBytes32 = ethers.keccak256(ethers.toUtf8Bytes(report.attestationId));
@@ -43,7 +116,7 @@ export async function anchorVerificationOnFlare(
       signer
     );
 
-    // Broadcast real transaction to Flare Coston2 Testnet
+    // Step 5: Broadcast real transaction — MetaMask will pop up for signature approval
     const tx = await contract.anchorVerification(
       verIdBytes32,
       claimHashBytes32,
@@ -62,11 +135,11 @@ export async function anchorVerificationOnFlare(
       blockNumber: receipt.blockNumber
     };
   } catch (err: any) {
-    console.warn('Flare Coston2 on-chain anchoring skipped (contract not deployed or tx rejected):', err?.message);
-    // Return no txHash — the verification is still cryptographically valid off-chain
+    const msg = err?.reason || err?.shortMessage || err?.message || 'Unknown error';
+    console.warn('Flare Coston2 on-chain anchoring skipped:', msg);
     return {
       success: false,
-      errorMessage: err?.message
+      errorMessage: msg
     };
   }
 }
