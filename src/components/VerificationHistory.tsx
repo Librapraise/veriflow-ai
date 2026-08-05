@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   FileText, 
   ShieldCheck, 
   Trash2,
-  ExternalLink
+  ExternalLink,
+  Copy,
+  Check
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import type { VerificationReport } from '../types/veriflow';
 import { VeriFlowStore } from '../lib/apiStore';
 
@@ -18,6 +21,7 @@ export const VerificationHistory: React.FC<VerificationHistoryProps> = ({
   const [verifications, setVerifications] = useState<VerificationReport[]>(VeriFlowStore.getVerifications());
   const [selectedReport, setSelectedReport] = useState<VerificationReport | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const handleRevoke = (id: string) => {
     VeriFlowStore.revokeVerification(id);
@@ -26,6 +30,24 @@ export const VerificationHistory: React.FC<VerificationHistoryProps> = ({
       setSelectedReport(prev => prev ? { ...prev, revoked: true } : null);
     }
   };
+
+  const getProofShareUrl = (report: VerificationReport): string => {
+    const origin = window.location.origin;
+    if (report.proof) {
+      const b64 = btoa(JSON.stringify(report.proof));
+      return `${origin}#${b64}`;
+    }
+    return `${origin}?verify_id=${report.id}`;
+  };
+
+  useEffect(() => {
+    if (selectedReport && qrCanvasRef.current) {
+      const url = getProofShareUrl(selectedReport);
+      QRCode.toCanvas(qrCanvasRef.current, url, { width: 128, margin: 1, color: { dark: '#0f172a', light: '#ffffff' } }, (err) => {
+        if (err) console.error('QR code render error:', err);
+      });
+    }
+  }, [selectedReport]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -70,7 +92,7 @@ export const VerificationHistory: React.FC<VerificationHistoryProps> = ({
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
               {verifications.map((v) => (
-                <tr key={v.id} className="hover:bg-slate-850/50 transition-colors">
+                <tr key={v.id} className="hover:bg-slate-800/50 transition-colors">
                   <td className="px-6 py-4 font-mono text-teal-400 font-bold">
                     {v.id}
                   </td>
@@ -159,19 +181,8 @@ export const VerificationHistory: React.FC<VerificationHistoryProps> = ({
 
             {/* QR Code & Share Payload */}
             <div className="flex flex-col sm:flex-row items-center gap-6 p-6 rounded-2xl bg-slate-950 border border-slate-800">
-              <div className="w-32 h-32 bg-white p-2 rounded-xl flex items-center justify-center shrink-0 shadow-lg">
-                {/* Visual QR Simulator */}
-                <div className="w-full h-full border-4 border-slate-900 p-1 flex flex-col justify-between">
-                  <div className="flex justify-between">
-                    <div className="w-6 h-6 bg-slate-900" />
-                    <div className="w-6 h-6 bg-slate-900" />
-                  </div>
-                  <div className="text-[8px] font-mono text-center font-bold text-slate-900">VERIFLOW</div>
-                  <div className="flex justify-between">
-                    <div className="w-6 h-6 bg-slate-900" />
-                    <div className="w-3 h-3 bg-teal-600" />
-                  </div>
-                </div>
+              <div className="bg-white p-2 rounded-2xl flex items-center justify-center shrink-0 shadow-xl border border-slate-200">
+                <canvas ref={qrCanvasRef} className="rounded-lg" />
               </div>
 
               <div className="space-y-2 flex-1 w-full text-xs">
@@ -181,24 +192,31 @@ export const VerificationHistory: React.FC<VerificationHistoryProps> = ({
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">Status:</span>
-                  <span className={selectedReport.revoked ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold'}>
-                    {selectedReport.revoked ? 'REVOKED' : 'VERIFIED TRUE'}
+                  <span className={selectedReport.revoked ? 'text-rose-400 font-bold' : selectedReport.result ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+                    {selectedReport.revoked ? 'REVOKED' : selectedReport.result ? 'VERIFIED TRUE ✓' : 'VERIFIED DENIED ✗'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">Attestation ID:</span>
                   <span className="font-mono text-teal-300">{selectedReport.attestationId}</span>
                 </div>
-                <div className="pt-2 flex gap-2">
+                <div className="pt-2 flex flex-col sm:flex-row gap-2">
+                  <button
+                    onClick={() => copyToClipboard(getProofShareUrl(selectedReport), 'link')}
+                    className="px-3 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs flex-1 transition-all flex items-center justify-center gap-1.5 shadow-md"
+                  >
+                    {copiedId === 'link' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedId === 'link' ? 'Verifier URL Copied!' : 'Copy Independent Verifier Link'}
+                  </button>
                   <button
                     onClick={() => copyToClipboard(selectedReport.signature, 'sig')}
-                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-300 font-semibold text-xs flex-1 transition-all"
+                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-300 font-semibold text-xs flex-1 transition-all"
                   >
-                    {copiedId === 'sig' ? 'Signature Copied!' : 'Copy Enclave Signature'}
+                    {copiedId === 'sig' ? 'Signature Copied!' : 'Copy ECDSA Signature'}
                   </button>
                   <button
                     onClick={onOpenAttestationModal}
-                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-all"
+                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-all"
                   >
                     Inspect TEE
                   </button>

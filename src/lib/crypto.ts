@@ -120,46 +120,20 @@ export async function decryptInsideEnclaveMemory(
   );
 }
 
-/**
- * Derives a deterministic cryptographic signature for verification results
- * simulating the enclave's hardware signing key (SK_enclave).
+/*
+ * REMOVED: generateEnclaveSignature() / verifyReportSignature()
+ *
+ * Those functions computed sha256(payload + "VERIFLOW_TEE_SIGNATURE_SECRET_V1")
+ * and called the result an "enclave signature". Because the secret shipped in
+ * client-side code, anyone could mint a valid signature for any claim — it
+ * authenticated nothing.
+ *
+ * Replaced by real secp256k1 ECDSA signing over a canonical digest:
+ *   - src/lib/tee/signing.ts  digest layout + recovery (single source of truth)
+ *   - src/lib/tee/signer.ts   key custody (remote server key vs browser key)
+ *   - contracts/VeriFlowRegistryV2.sol  on-chain ecrecover against the
+ *                                       registered TEE identity
+ *
+ * Intentionally not kept as a fallback: a forgeable signing path that still
+ * exists is still a vulnerability.
  */
-export async function generateEnclaveSignature(
-  verificationId: string,
-  claim: string,
-  result: boolean,
-  timestamp: string,
-  attestationId: string
-): Promise<{ signatureHex: string; enclavePubKeyHex: string }> {
-  const payloadString = `${verificationId}:${claim}:${result}:${timestamp}:${attestationId}:VERIFLOW_TEE_SIGNATURE_SECRET_V1`;
-  const signatureHex = await sha256Hex(payloadString);
-  
-  // Enclave Public Key constant / derived representation
-  const enclavePubKeyHex = '0x04f7c29e1d883011a09b43e887f91c90538a2e1d09ff451000b21aef4200c92138a4f9119';
-  
-  return {
-    signatureHex: `0x${signatureHex}`,
-    enclavePubKeyHex,
-  };
-}
-
-/**
- * Validates a verification report signature on the client / verifier side.
- */
-export async function verifyReportSignature(
-  verificationId: string,
-  claim: string,
-  result: boolean,
-  timestamp: string,
-  attestationId: string,
-  signatureHex: string
-): Promise<boolean> {
-  const expected = await generateEnclaveSignature(
-    verificationId,
-    claim,
-    result,
-    timestamp,
-    attestationId
-  );
-  return expected.signatureHex.toLowerCase() === signatureHex.toLowerCase();
-}

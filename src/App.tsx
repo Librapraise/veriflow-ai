@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Navbar } from './components/Navbar';
 import { LandingPage } from './components/LandingPage';
 import { Dashboard } from './components/Dashboard';
@@ -6,20 +7,27 @@ import { DocumentUpload } from './components/DocumentUpload';
 import { VerificationHistory } from './components/VerificationHistory';
 import { DeveloperPortal } from './components/DeveloperPortal';
 import { AIAssistant } from './components/AIAssistant';
+import { PublicVerifier } from './components/PublicVerifier';
 import type { UserSession } from './types/veriflow';
 import { AttestationViewer } from './components/AttestationViewer';
 import { VeriFlowStore } from './lib/apiStore';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<'landing' | 'dashboard' | 'verify' | 'history' | 'developer' | 'assistant'>('landing');
+  const [activeTab, setActiveTab] = useState<'landing' | 'dashboard' | 'verify' | 'verifier' | 'history' | 'developer' | 'assistant'>('landing');
   const [userSession, setUserSession] = useState<UserSession>(VeriFlowStore.getUserSession());
   
   const [isAttestationModalOpen, setIsAttestationModalOpen] = useState<boolean>(false);
   const [simulatedFailAttestation, setSimulatedFailAttestation] = useState<boolean>(false);
 
-  // Sync session changes
+  // Sync session changes and detect proof links in URL hash or query params
   useEffect(() => {
     VeriFlowStore.setUserSession(userSession);
+
+    if (typeof window !== 'undefined') {
+      if (window.location.hash.length > 1 || window.location.search.includes('verify_id=')) {
+        setActiveTab('verifier');
+      }
+    }
   }, [userSession]);
 
   return (
@@ -36,43 +44,106 @@ export function App() {
 
       {/* Main View Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {activeTab === 'landing' && (
-          <LandingPage 
-            setActiveTab={setActiveTab}
-            onOpenAttestationModal={() => setIsAttestationModalOpen(true)}
-          />
-        )}
+        <AnimatePresence mode="wait">
+          {activeTab === 'landing' && (
+            <motion.div
+              key="landing"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+            >
+              <LandingPage 
+                setActiveTab={setActiveTab}
+                onOpenAttestationModal={() => setIsAttestationModalOpen(true)}
+              />
+            </motion.div>
+          )}
 
-        {activeTab === 'dashboard' && (
-          <Dashboard 
-            userSession={userSession}
-            setActiveTab={setActiveTab}
-            onOpenAttestationModal={() => setIsAttestationModalOpen(true)}
-          />
-        )}
+          {activeTab === 'dashboard' && (
+            <motion.div
+              key="dashboard"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+            >
+              <Dashboard 
+                userSession={userSession}
+                setActiveTab={setActiveTab}
+                onOpenAttestationModal={() => setIsAttestationModalOpen(true)}
+              />
+            </motion.div>
+          )}
 
-        {activeTab === 'verify' && (
-          <DocumentUpload 
-            onOpenAttestationModal={() => setIsAttestationModalOpen(true)}
-            simulatedFailAttestation={simulatedFailAttestation}
-          />
-        )}
+          {activeTab === 'verify' && (
+            <motion.div
+              key="verify"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+            >
+              <DocumentUpload 
+                setUserSession={setUserSession}
+                onOpenAttestationModal={() => setIsAttestationModalOpen(true)}
+                simulatedFailAttestation={simulatedFailAttestation}
+              />
+            </motion.div>
+          )}
 
-        {activeTab === 'history' && (
-          <VerificationHistory 
-            onOpenAttestationModal={() => setIsAttestationModalOpen(true)}
-          />
-        )}
+          {activeTab === 'verifier' && (
+            <motion.div
+              key="verifier"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+            >
+              <PublicVerifier />
+            </motion.div>
+          )}
 
-        {activeTab === 'developer' && (
-          <DeveloperPortal />
-        )}
+          {activeTab === 'history' && (
+            <motion.div
+              key="history"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+            >
+              <VerificationHistory 
+                onOpenAttestationModal={() => setIsAttestationModalOpen(true)}
+              />
+            </motion.div>
+          )}
 
-        {activeTab === 'assistant' && (
-          <AIAssistant 
-            setActiveTab={setActiveTab}
-          />
-        )}
+          {activeTab === 'developer' && (
+            <motion.div
+              key="developer"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+            >
+              <DeveloperPortal />
+            </motion.div>
+          )}
+
+          {activeTab === 'assistant' && (
+            <motion.div
+              key="assistant"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+            >
+              <AIAssistant 
+                setActiveTab={setActiveTab}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
       {/* TEE Attestation Inspector Modal */}

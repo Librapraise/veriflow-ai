@@ -16,20 +16,24 @@ import {
   Share2,
   Check,
   Zap,
-  Link
+  Link,
+  Terminal
 } from 'lucide-react';
 import type { DocumentType, ClaimType, VerificationReport } from '../types/veriflow';
 import { encryptDocumentClientSide } from '../lib/crypto';
 import { executeConfidentialComputeJob, type EnclaveExecutionProgress } from '../lib/enclaveSimulator';
 import { VeriFlowStore } from '../lib/apiStore';
+import { DEMO_PASSPORT_ADULT, DEMO_PASSPORT_MINOR, DEMO_PASSPORT_EXPIRED } from '../lib/tee/extractor';
 
 interface DocumentUploadProps {
+  setUserSession: (session: any) => void;
   onVerificationComplete?: (report: VerificationReport) => void;
   onOpenAttestationModal: () => void;
   simulatedFailAttestation: boolean;
 }
 
 export const DocumentUpload: React.FC<DocumentUploadProps> = ({
+  setUserSession,
   onVerificationComplete,
   onOpenAttestationModal,
   simulatedFailAttestation
@@ -123,6 +127,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
       // Save verification report
       VeriFlowStore.addVerification(report);
+      setUserSession(VeriFlowStore.getUserSession());
       setCompletedReport(report);
       if (onVerificationComplete) onVerificationComplete(report);
 
@@ -233,6 +238,52 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Demo Document Presets */}
+              <div className="space-y-1.5">
+                <div className="text-[11px] font-semibold text-slate-400">Quick Demo Presets (1-Click Test Files):</div>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const f = new File([DEMO_PASSPORT_ADULT], 'passport_adult_rivera.mrz', { type: 'text/plain' });
+                      setFile(f);
+                      setDocumentType('passport');
+                      setClaimType('age_above_18');
+                    }}
+                    className="p-2 rounded-xl bg-slate-950 border border-slate-800 hover:border-emerald-500/50 text-left transition-all group"
+                  >
+                    <div className="text-xs font-bold text-emerald-400 group-hover:text-emerald-300">Adult Passport</div>
+                    <div className="text-[10px] text-slate-400">DOB: 1990 → VERIFIED</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const f = new File([DEMO_PASSPORT_MINOR], 'passport_minor_chen.mrz', { type: 'text/plain' });
+                      setFile(f);
+                      setDocumentType('passport');
+                      setClaimType('age_above_18');
+                    }}
+                    className="p-2 rounded-xl bg-slate-950 border border-slate-800 hover:border-rose-500/50 text-left transition-all group"
+                  >
+                    <div className="text-xs font-bold text-rose-400 group-hover:text-rose-300">Minor Passport</div>
+                    <div className="text-[10px] text-slate-400">DOB: 2009 → DENIED (Age 17)</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const f = new File([DEMO_PASSPORT_EXPIRED], 'passport_expired_okafor.mrz', { type: 'text/plain' });
+                      setFile(f);
+                      setDocumentType('passport');
+                      setClaimType('government_id_valid');
+                    }}
+                    className="p-2 rounded-xl bg-slate-950 border border-slate-800 hover:border-amber-500/50 text-left transition-all group"
+                  >
+                    <div className="text-xs font-bold text-amber-400 group-hover:text-amber-300">Expired ID</div>
+                    <div className="text-[10px] text-slate-400">Expires: 2020 → DENIED</div>
+                  </button>
+                </div>
               </div>
 
               {/* Dropzone Upload */}
@@ -352,6 +403,27 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                   <ExternalLink className="w-3 h-3" />
                 </button>
               </div>
+
+              {/* Real-Time Execution Lifecycle & Streaming Enclave Terminal */}
+              {isProcessing && (
+                <div className="bg-black/60 rounded-xl p-4 font-mono text-[10px] text-emerald-400 border border-emerald-500/30 space-y-1.5 shadow-inner">
+                  <div className="flex items-center justify-between text-slate-500 text-[9px] pb-1 border-b border-emerald-500/20">
+                    <span className="font-bold text-emerald-400 flex items-center gap-1">
+                      <Terminal className="w-3 h-3 text-emerald-400 animate-pulse" />
+                      TEE ENCLAVE STREAMING LOGS
+                    </span>
+                    <span>INTEL SGX / AMD SEV</span>
+                  </div>
+                  {executionSteps.map((step, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="text-slate-500 font-bold">[{(i * 0.4).toFixed(1)}s]</span>
+                      <span className="text-emerald-300 font-semibold">{step.step}:</span>
+                      <span className="text-slate-400">{step.message}</span>
+                    </div>
+                  ))}
+                  <div className="inline-block w-2 h-3 bg-emerald-400 animate-pulse ml-1 translate-y-0.5" />
+                </div>
+              )}
 
               {/* Execution Steps Stepper */}
               <div className="space-y-3">

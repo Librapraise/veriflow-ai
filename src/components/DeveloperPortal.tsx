@@ -67,7 +67,10 @@ export const DeveloperPortal: React.FC = () => {
     setTimeout(() => setCopiedText(null), 2000);
   };
 
-  const curlSnippet = `curl -X POST "${window.location.origin}${endpoint}" \\
+  // Point cURL at the actual API gateway, not the frontend origin (which serves no API).
+  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+  const curlSnippet = `curl -X POST "${apiBaseUrl}${endpoint}" \\
   -H "Authorization: Bearer ${selectedOrg?.apiKey}" \\
   -H "Content-Type: application/json" \\
   -d '{

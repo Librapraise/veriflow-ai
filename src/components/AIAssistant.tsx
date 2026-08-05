@@ -3,8 +3,10 @@ import {
   Bot, 
   Send, 
   Sparkles, 
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from 'lucide-react';
+import { VeriFlowStore } from '../lib/apiStore';
 
 interface Message {
   id: string;
@@ -12,12 +14,12 @@ interface Message {
   text: string;
   actionButton?: {
     label: string;
-    tab: 'verify' | 'history' | 'developer';
+    tab: 'verify' | 'verifier' | 'history' | 'developer';
   };
 }
 
 interface AIAssistantProps {
-  setActiveTab: (tab: 'landing' | 'dashboard' | 'verify' | 'history' | 'developer' | 'assistant') => void;
+  setActiveTab: (tab: 'landing' | 'dashboard' | 'verify' | 'verifier' | 'history' | 'developer' | 'assistant') => void;
 }
 
 export const AIAssistant: React.FC<AIAssistantProps> = ({ setActiveTab }) => {
@@ -25,10 +27,11 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ setActiveTab }) => {
     {
       id: '1',
       sender: 'assistant',
-      text: 'Hello! I am VeriFlow AI Assistant. I can route natural language requests to our TEE Confidential Compute enclave verification engine. How can I assist you today?'
+      text: 'Hello! I am VeriFlow AI Assistant. I can answer questions about confidential compute, evaluate document verifications, check system status, or route you to specialized workflows. How can I assist you today?'
     }
   ]);
   const [input, setInput] = useState('');
+  const [isThinking, setIsThinking] = useState(false);
 
   const handleSend = (userText?: string) => {
     const textToSend = userText || input;
@@ -42,29 +45,40 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ setActiveTab }) => {
 
     setMessages(prev => [...prev, userMsg]);
     if (!userText) setInput('');
+    setIsThinking(true);
 
-    // Parse natural language intent
+    // Parse natural language intent with live store state
     const lower = textToSend.toLowerCase();
     let replyText = '';
     let actionButton: Message['actionButton'];
 
-    if (lower.includes('age') || lower.includes('18') || lower.includes('passport')) {
-      replyText = 'I have identified an Age 18+ Verification request. Our Golden Path confidential compute pipeline will encrypt your passport client-side and evaluate date_of_birth inside the TEE enclave memory.';
+    const verificationsCount = VeriFlowStore.getVerifications().length;
+    const documentsCount = VeriFlowStore.getDocuments().length;
+    const orgsCount = VeriFlowStore.getOrganizations().length;
+
+    if (lower.includes('status') || lower.includes('count') || lower.includes('documents') || lower.includes('summary')) {
+      replyText = `📊 **Current Session Summary**:\n• Encrypted Documents: ${documentsCount}\n• Attested Verifications: ${verificationsCount}\n• Registered API Orgs: ${orgsCount}\n\nAll documents are encrypted with AES-256-GCM before storage. Zero raw document data ever reaches public storage or the blockchain.`;
+      actionButton = { label: 'View Dashboard & Reports', tab: 'history' };
+    } else if (lower.includes('age') || lower.includes('18') || lower.includes('passport')) {
+      replyText = '🛡️ **Age 18+ Golden Path**: Our TEE pipeline parses ICAO 9303 TD3 MRZ text client-side or inside Flare Confidential Compute RAM. DOB is evaluated against threshold date (today - 18y). Only a signed boolean verdict is emitted.';
       actionButton = { label: 'Execute Age 18+ Verification', tab: 'verify' };
     } else if (lower.includes('income') || lower.includes('payslip') || lower.includes('bank') || lower.includes('salary')) {
-      replyText = 'I have identified an Income Verification request. The enclave will extract net/gross figures inside RAM and output a signed boolean confirming if threshold requirements are met.';
+      replyText = '💰 **Income Threshold Verification**: The enclave extracts net salary figures inside RAM and checks if income >= $50,000/yr without revealing exact salary numbers to the requester.';
       actionButton = { label: 'Execute Income Verification', tab: 'verify' };
     } else if (lower.includes('degree') || lower.includes('university') || lower.includes('education')) {
-      replyText = 'I have identified a Degree Credential verification request. Would you like to launch confidential degree evaluation?';
+      replyText = '🎓 **Degree Credential Verification**: Evaluates accredited degree certificates inside RAM and signs an EIP-191 proof verifying completion of specified degree programs.';
       actionButton = { label: 'Execute Degree Verification', tab: 'verify' };
-    } else if (lower.includes('api') || lower.includes('key') || lower.includes('developer')) {
-      replyText = 'You can issue API keys for third-party developer integrations in the Developer API Portal.';
+    } else if (lower.includes('public verifier') || lower.includes('check proof') || lower.includes('verify proof') || lower.includes('tamper')) {
+      replyText = '🔍 **Public Verifier Tool**: Recompute EIP-191 digest (`abi.encodePacked` 165 bytes), recover ECDSA `secp256k1` signer, and verify on-chain registration on Flare Coston2 Testnet (`VeriFlowRegistryV2`).';
+      actionButton = { label: 'Open Public Verifier', tab: 'verifier' };
+    } else if (lower.includes('api') || lower.includes('key') || lower.includes('developer') || lower.includes('curl')) {
+      replyText = '🔑 **Developer API Portal**: Issue API keys (`vf_live_...`), test cURL endpoints (`/v1/tee/execute`, `/v1/verify-age`), and inspect rate limit telemetry.';
       actionButton = { label: 'Open Developer API Portal', tab: 'developer' };
     } else if (lower.includes('history') || lower.includes('report') || lower.includes('past')) {
-      replyText = 'Here are your past signed verifications and attestation audit trails.';
+      replyText = `📜 You have ${verificationsCount} saved verification report(s). Click below to view audit logs, copy EIP-191 signatures, or inspect QR codes.`;
       actionButton = { label: 'View Verification History', tab: 'history' };
     } else {
-      replyText = 'I can help you verify your age (18+), income threshold, degree credentials, or employment status confidentially. What fact would you like to verify?';
+      replyText = 'VeriFlow AI combines Client-Side AES-256-GCM Encryption, Flare TEE Enclave Execution, and On-Chain Flare Registry Anchoring to deliver zero-knowledge proof of facts without disclosing underlying identity data. What fact would you like to verify?';
     }
 
     setTimeout(() => {
@@ -75,7 +89,8 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ setActiveTab }) => {
         actionButton
       };
       setMessages(prev => [...prev, assistantMsg]);
-    }, 600);
+      setIsThinking(false);
+    }, 500);
   };
 
   return (
@@ -90,10 +105,10 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ setActiveTab }) => {
           <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
             VeriFlow AI Conversational Assistant
             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300">
-              NATURAL LANGUAGE ROUTER
+              INTELLIGENT TEE ROUTER
             </span>
           </h2>
-          <p className="text-xs text-slate-400">Route verification requests naturally ("Verify my age from passport", "Verify my income")</p>
+          <p className="text-xs text-slate-400">Natural language routing for confidential compute verifications, API portal, & public verifier</p>
         </div>
       </div>
 
@@ -102,14 +117,15 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ setActiveTab }) => {
         {[
           'Verify my age (18+)',
           'Verify my income from payslip',
-          'Verify my degree certificate',
+          'Check system status',
+          'Open Public Verifier',
           'Show developer API keys',
           'View verification history'
         ].map((chip, idx) => (
           <button
             key={idx}
             onClick={() => handleSend(chip)}
-            className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-medium text-slate-300 transition-all flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-medium text-slate-300 transition-all flex items-center gap-1.5 shadow-sm"
           >
             <Sparkles className="w-3 h-3 text-purple-400" />
             <span>{chip}</span>
@@ -118,7 +134,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ setActiveTab }) => {
       </div>
 
       {/* Chat Window */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 h-[460px] flex flex-col justify-between shadow-2xl">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 h-[480px] flex flex-col justify-between shadow-2xl">
         
         {/* Messages Scroll Area */}
         <div className="overflow-y-auto space-y-4 pr-2 flex-1">
@@ -128,17 +144,17 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ setActiveTab }) => {
               className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'}`}
             >
               <div
-                className={`max-w-[80%] p-4 rounded-2xl text-xs leading-relaxed space-y-2 ${
+                className={`max-w-[85%] p-4 rounded-2xl text-xs leading-relaxed space-y-2.5 ${
                   m.sender === 'user'
-                    ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-slate-950 font-semibold'
-                    : 'bg-slate-950 border border-slate-800 text-slate-200'
+                    ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-slate-950 font-semibold shadow-md'
+                    : 'bg-slate-950 border border-slate-800 text-slate-200 shadow-sm'
                 }`}
               >
-                <p>{m.text}</p>
+                <p className="whitespace-pre-line">{m.text}</p>
                 {m.actionButton && (
                   <button
                     onClick={() => setActiveTab(m.actionButton!.tab)}
-                    className="w-full mt-2 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold text-xs flex items-center justify-center space-x-1.5 shadow-md"
+                    className="w-full mt-2 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold text-xs flex items-center justify-center space-x-1.5 shadow-md transition-all"
                   >
                     <span>{m.actionButton.label}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -147,13 +163,19 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ setActiveTab }) => {
               </div>
             </div>
           ))}
+          {isThinking && (
+            <div className="flex items-center space-x-2 text-xs text-purple-400 bg-purple-500/10 border border-purple-500/20 px-4 py-2.5 rounded-2xl w-fit">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>VeriFlow AI is evaluating enclave rules…</span>
+            </div>
+          )}
         </div>
 
         {/* Input Bar */}
         <div className="pt-4 border-t border-slate-800 flex items-center space-x-2">
           <input
             type="text"
-            placeholder="Type your verification prompt e.g., 'Verify my age above 18'..."
+            placeholder="Ask anything or request verification e.g. 'Verify my age above 18'..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}

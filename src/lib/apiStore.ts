@@ -26,135 +26,14 @@ const DEFAULT_USER: UserSession = {
   address: '',
   isConnected: false,
   chainId: 114, // Flare Coston2 / Testnet
-  trustScore: 85,
+  trustScore: 0,
   documentsCount: 0,
   verificationsCount: 0
 };
 
-const DEFAULT_DOCUMENTS: EncryptedDocumentMetadata[] = [
-  {
-    id: 'doc_pas_9f2c1a',
-    userId: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-    type: 'passport',
-    fileName: 'Alex_Rivera_Passport.pdf',
-    fileSize: 2450120,
-    mimeType: 'application/pdf',
-    encryptedPath: 'r2://veriflow-blobs/enc_doc_pas_9f2c1a.bin',
-    ivHex: '4a9b2c7e1d3f5a6b0c9d8e7f',
-    dataKeyWrappedHex: '8f4a9b2c7e1d3f5a6b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a',
-    status: 'attested_processed',
-    createdAt: new Date(Date.now() - 3600000 * 24 * 3).toISOString()
-  },
-  {
-    id: 'doc_deg_4b8e2d',
-    userId: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-    type: 'degree_certificate',
-    fileName: 'Stanford_BS_Diploma.png',
-    fileSize: 1845000,
-    mimeType: 'image/png',
-    encryptedPath: 'r2://veriflow-blobs/enc_doc_deg_4b8e2d.bin',
-    ivHex: '1d3f5a6b0c9d8e7f4a9b2c7e',
-    dataKeyWrappedHex: '7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a8f4a9b2c7e1d3f5a6b0c9d8e',
-    status: 'attested_processed',
-    createdAt: new Date(Date.now() - 3600000 * 24 * 7).toISOString()
-  },
-  {
-    id: 'doc_pay_6c1f9e',
-    userId: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-    type: 'payslip',
-    fileName: 'FlareLabs_Payslip_June2026.pdf',
-    fileSize: 890400,
-    mimeType: 'application/pdf',
-    encryptedPath: 'r2://veriflow-blobs/enc_doc_pay_6c1f9e.bin',
-    ivHex: '0c9d8e7f4a9b2c7e1d3f5a6b',
-    dataKeyWrappedHex: '3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a8f4a9b2c7e1d3f5a6b0c9d8e7f6a5b4c',
-    status: 'attested_processed',
-    createdAt: new Date(Date.now() - 3600000 * 24 * 12).toISOString()
-  }
-];
+const DEFAULT_DOCUMENTS: EncryptedDocumentMetadata[] = [];
 
-const DEFAULT_VERIFICATIONS: VerificationReport[] = [
-  {
-    id: 'ver_7ab1c9e4',
-    userId: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-    documentId: 'doc_pas_9f2c1a',
-    type: 'age_above_18',
-    claimTitle: 'Age is 18 years or older',
-    claimCategory: 'age',
-    result: true,
-    verifiedAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-    hash: '0x9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b',
-    signature: '0x4e9a2b7c1d0f8e9a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a',
-    attestationId: 'att_22f09a1',
-    attestationQuote: {
-      attestationId: 'att_22f09a1',
-      enclaveMeasurementHex: '0x8f4a9b2c7e1d3f5a6b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a',
-      kmsStatus: 'VALID_ALLOWLIST',
-      keyReleased: true,
-      hardwareTEE: 'Flare Confidential Compute (Intel SGX / AMD SEV TEE)',
-      timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-      signatureScheme: 'Ed25519-TEE-Attested',
-      rawQuoteHex: '0x04000000a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8'
-    },
-    confidenceScore: 0.99,
-    revoked: false,
-    requesterOrg: 'Uber ID Check',
-    txHash: '0x3a9f1b2c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2',
-    explorerUrl: 'https://coston2-explorer.flare.network/tx/0x3a9f1b2c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2'
-  },
-  {
-    id: 'ver_3f8e9a2d',
-    userId: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-    documentId: 'doc_deg_4b8e2d',
-    type: 'degree_verified',
-    claimTitle: 'Accredited degree credential verified',
-    claimCategory: 'education',
-    result: true,
-    verifiedAt: new Date(Date.now() - 3600000 * 20).toISOString(),
-    hash: '0x3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c',
-    signature: '0x8f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a',
-    attestationId: 'att_88c4b12',
-    attestationQuote: {
-      attestationId: 'att_88c4b12',
-      enclaveMeasurementHex: '0x8f4a9b2c7e1d3f5a6b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a',
-      kmsStatus: 'VALID_ALLOWLIST',
-      keyReleased: true,
-      hardwareTEE: 'Flare Confidential Compute (Intel SGX / AMD SEV TEE)',
-      timestamp: new Date(Date.now() - 3600000 * 20).toISOString(),
-      signatureScheme: 'Ed25519-TEE-Attested',
-      rawQuoteHex: '0x04000000e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8a1b2c3d4'
-    },
-    confidenceScore: 0.98,
-    revoked: false,
-    requesterOrg: 'DeFi HR DAO'
-  },
-  {
-    id: 'ver_9c4d1b8f',
-    userId: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-    documentId: 'doc_pay_6c1f9e',
-    type: 'income_above_threshold',
-    claimTitle: 'Annual income / liquid balance exceeds $100,000',
-    claimCategory: 'income',
-    result: true,
-    verifiedAt: new Date(Date.now() - 3600000 * 48).toISOString(),
-    hash: '0x5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e',
-    signature: '0x7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a8f4a9b2c7e1d3f5a6b0c9d8e',
-    attestationId: 'att_55a1d99',
-    attestationQuote: {
-      attestationId: 'att_55a1d99',
-      enclaveMeasurementHex: '0x8f4a9b2c7e1d3f5a6b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a',
-      kmsStatus: 'VALID_ALLOWLIST',
-      keyReleased: true,
-      hardwareTEE: 'Flare Confidential Compute (Intel SGX / AMD SEV TEE)',
-      timestamp: new Date(Date.now() - 3600000 * 48).toISOString(),
-      signatureScheme: 'Ed25519-TEE-Attested',
-      rawQuoteHex: '0x04000000c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8a1b2c3d4e5f6a7b8'
-    },
-    confidenceScore: 0.97,
-    revoked: false,
-    requesterOrg: 'Aave Prime Risk'
-  }
-];
+const DEFAULT_VERIFICATIONS: VerificationReport[] = [];
 
 const DEFAULT_ORGS: Organization[] = [
   {
@@ -162,7 +41,7 @@ const DEFAULT_ORGS: Organization[] = [
     name: 'Acme Financial Inc',
     apiKey: 'vf_live_9a8b7c6d5e4f3a2b1c0d9e8f',
     webhookUrl: 'https://api.acme.com/v1/veriflow-webhook',
-    requestsCount: 142,
+    requestsCount: 0,
     createdAt: '2026-06-01T10:00:00Z'
   },
   {
@@ -170,7 +49,7 @@ const DEFAULT_ORGS: Organization[] = [
     name: 'Nexus DAO Onboarding',
     apiKey: 'vf_live_1a2b3c4d5e6f7a8b9c0d1e2f',
     webhookUrl: 'https://nexus.dao/webhooks/kyc',
-    requestsCount: 89,
+    requestsCount: 0,
     createdAt: '2026-06-15T14:30:00Z'
   }
 ];
@@ -218,7 +97,21 @@ function setStored<T>(key: string, value: T): void {
 
 export class VeriFlowStore {
   static getUserSession(): UserSession {
-    return getStored(STORAGE_KEYS.USER, DEFAULT_USER);
+    const session = getStored(STORAGE_KEYS.USER, DEFAULT_USER);
+    const docsCount = this.getDocuments().length;
+    const verifsCount = this.getVerifications().length;
+    
+    // Dynamically calculate trustScore: 0 when empty, or 70 base + 5 per doc + 5 per verif up to 100
+    const calculatedScore = (docsCount === 0 && verifsCount === 0) 
+      ? 0 
+      : Math.min(100, 70 + (docsCount * 5) + (verifsCount * 5));
+    
+    return {
+      ...session,
+      documentsCount: docsCount,
+      verificationsCount: verifsCount,
+      trustScore: calculatedScore
+    };
   }
 
   static setUserSession(session: UserSession): void {
@@ -247,6 +140,10 @@ export class VeriFlowStore {
 
   static getVerifications(): VerificationReport[] {
     return getStored(STORAGE_KEYS.VERIFICATIONS, DEFAULT_VERIFICATIONS);
+  }
+
+  static getVerificationById(id: string): VerificationReport | undefined {
+    return this.getVerifications().find(v => v.id === id);
   }
 
   static addVerification(report: VerificationReport): void {
@@ -360,7 +257,31 @@ export class VeriFlowStore {
     );
     const ciphertextBase64 = btoa(String.fromCharCode(...new Uint8Array(encryptedBuf)));
 
-    // Execute TEE Enclave verification
+    // Try fetching from live FastAPI Gateway if configured/online
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    try {
+      const liveRes = await fetch(`${apiBaseUrl}${params.endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${params.apiKey}`,
+        },
+        body: JSON.stringify({
+          wallet_address: params.walletAddress,
+          threshold: params.threshold,
+        }),
+      });
+
+      if (liveRes.ok) {
+        const data = await liveRes.json();
+        this.logApiCall(org.id, org.name, data.verification_id, params.endpoint, liveRes.status);
+        return { status: liveRes.status, data };
+      }
+    } catch (e) {
+      // Live API unreachable, fall back to in-browser enclave simulator
+    }
+
+    // Execute TEE Enclave verification in-browser simulator
     const report = await executeConfidentialComputeJob({
       claimType: params.claimType,
       documentType: doc ? doc.type : 'passport',

@@ -1,0 +1,17 @@
+{
+  "attestation": {
+    "verificationId": "0x8b76b1823f40c54c8794d49fdaeab644a059f94537a7a91bdf8f797064be7608",
+    "subject": "0x8C17E0cfca9153F91d9034178c87f9C973EafD11",
+    "claimHash": "0xf2d21afe576aa119abc6764ca064d5d4ee0d8aa19b83a9c6b11cf14f4664b448",
+    "result": true,
+    "issuedAt": 1785899865,
+    "expiresAt": 1793675865,
+    "codeMeasurement": "0xd84e5ababec001f7d94523e6c48f2a3de09060f032abc3744e5262a32fded72d",
+    "attestationHash": "0x0fd3e1323b7a66bfb54beffb4421b548949cf1f92f2670740d48a91785319958"
+  },
+  "signature": "0xa34db3eddb1c4360b140f1a2d13e1003b8f6821076996241f378d02b35ff64322aad7bac72ba1aa63652f7f34105e5a065c3df07ca1685bb3d654ce1f6a1bcfb1c",
+  "digest": "0x59cde5fe17aa0bf192a47376ea6f9ce85bc3e8a6371d29d2acb0ebb2015ccc5d",
+  "signerAddress": "0x8C17E0cfca9153F91d9034178c87f9C973EafD11",
+  "teeMode": "simulated",
+  "anchorable": false
+}

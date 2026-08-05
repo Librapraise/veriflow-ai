@@ -92,15 +92,73 @@ export interface EncryptedDocumentMetadata {
   createdAt: string;
 }
 
+/**
+ * How the signing identity is hosted.
+ *
+ * Deliberately explicit: the cryptography is real secp256k1 ECDSA in BOTH modes.
+ * The only difference is where the private key lives — and that is the entire
+ * simulation boundary of this project.
+ */
+export type TeeHostingMode =
+  /** Key held by the backend process. Real signing, no hardware isolation. */
+  | 'Simulated TEE (server-held identity key)'
+  /** Key held in-browser for offline demos. Real signing, NOT anchorable. */
+  | 'Local TEE Simulator (ephemeral browser key)'
+  /** Target production posture: key sealed to an attested confidential VM. */
+  | 'Flare Confidential Compute (AMD SEV / Intel TDX via Confidential Space)';
+
 export interface RemoteAttestationQuote {
   attestationId: string;
-  enclaveMeasurementHex: string; // PCR / Code Hash (e.g. SHA-256 of enclave binary)
+  /**
+   * Approved code version — the container image digest, matching Flare FCC's
+   * model. NOT an Intel SGX enclave measurement.
+   */
+  enclaveMeasurementHex: string;
+  /** Whether the code version is allow-listed on-chain. */
   kmsStatus: 'VALID_ALLOWLIST' | 'REJECTED_UNATTESTED';
   keyReleased: boolean;
-  hardwareTEE: 'Flare Confidential Compute (Intel SGX / AMD SEV TEE)' | 'Local TEE Simulator (Mock Hardware Attested)';
+  hardwareTEE: TeeHostingMode;
   timestamp: string;
-  signatureScheme: 'Ed25519-TEE-Attested' | 'ECDSA-Secp256k1-Enclave';
+  /** EIP-191 personal-sign envelope over a keccak256 digest. */
+  signatureScheme: 'ECDSA-secp256k1-EIP191';
   rawQuoteHex: string;
+}
+
+/**
+ * The independently verifiable portion of a report.
+ *
+ * Everything needed to verify a claim WITHOUT trusting VeriFlow: recompute the
+ * digest from `attestation`, recover the signer from `signature`, and compare it
+ * to the `teeIdentity` registered in `registryAddress` on Flare. This is exactly
+ * what the public verifier page and scripts/verifyProof.mjs do.
+ */
+export interface VerificationProof {
+  /** The 8 signed fields. Hashes/addresses, never PII. */
+  attestation: {
+    verificationId: string;
+    subject: string;
+    claimHash: string;
+    result: boolean;
+    issuedAt: number;
+    expiresAt: number;
+    codeMeasurement: string;
+    attestationHash: string;
+  };
+  /** 65-byte secp256k1 ECDSA signature (r||s||v). */
+  signature: string;
+  /** keccak256 of the packed attestation — recomputable by the verifier. */
+  digest: string;
+  /** Address recovered from `signature`. */
+  signerAddress: string;
+  /** Where the signing key lives. */
+  teeMode: 'remote' | 'simulated';
+  /**
+   * False for browser-signed proofs: the ephemeral key is not the registered
+   * TEE identity, so the registry would reject the anchor. See signer.ts.
+   */
+  anchorable: boolean;
+  /** Registry the proof should be verified against. */
+  registryAddress?: string;
 }
 
 export interface VerificationReport {
@@ -111,11 +169,14 @@ export interface VerificationReport {
   claimTitle: string;
   claimCategory: ClaimCategory;
   result: boolean;
+  verificationStatus: 'VERIFIED' | 'DENIED' | 'UNVERIFIABLE';
   verifiedAt: string;
   hash: string;              // Verification hash
-  signature: string;         // Cryptographic signature from Enclave SK
+  signature: string;         // 65-byte ECDSA signature (mirrors proof.signature)
   attestationId: string;
   attestationQuote: RemoteAttestationQuote;
+  /** Present when a real signature was produced. Absent for UNVERIFIABLE. */
+  proof?: VerificationProof;
   confidenceScore: number;   // OCR confidence (e.g. 0.98)
   revoked: boolean;
   revokedAt?: string;

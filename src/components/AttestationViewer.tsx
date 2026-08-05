@@ -11,6 +11,7 @@ import {
 import { ALLOWLISTED_ENCLAVE_MEASUREMENT } from '../lib/enclaveSimulator';
 import { verifyFlareAttestationQuote } from '../lib/flareAttestationVerifier';
 import { VeriFlowStore } from '../lib/apiStore';
+import { TEE_IDENTITY_ADDRESS } from '../config/contracts';
 
 interface AttestationViewerProps {
   isOpen: boolean;
@@ -45,7 +46,7 @@ export const AttestationViewer: React.FC<AttestationViewerProps> = ({
 e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0
 8f4a9b2c7e1d3f5a6b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a`;
 
-  const enclavePubKey = '0x04f7c29e1d883011a09b43e887f91c90538a2e1d09ff451000b21aef4200c92138a4f9119';
+  const enclavePubKey = TEE_IDENTITY_ADDRESS || '0x3FB763Adfc4190482a2e6758c7842c755B4aE1bE';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
@@ -61,7 +62,7 @@ e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 Flare Confidential Compute Attestation
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-500/20 text-teal-300 border border-teal-500/30">
-                  Hardware TEE
+                  SIMULATED TEE
                 </span>
               </h3>
               <p className="text-xs text-slate-400">Cryptographic proof of code measurement & memory isolation</p>
@@ -160,7 +161,7 @@ e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0
 
                 <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
                   <div className="text-xs font-medium text-slate-400 flex items-center justify-between">
-                    <span>Enclave Public Signing Key (PK_enclave)</span>
+                    <span>Registered TEE Identity Address (secp256k1)</span>
                     <button 
                       onClick={() => copyToClipboard(enclavePubKey, 'pk')}
                       className="text-teal-400 hover:text-teal-300 flex items-center gap-1 text-[11px]"

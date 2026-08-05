@@ -4,7 +4,11 @@
  */
 
 import { ethers } from 'ethers';
-import { FLARE_COSTON2_CONFIG, VERIFLOW_REGISTRY_ADDRESS, VERIFLOW_REGISTRY_ABI } from '../config/contracts';
+import {
+  FLARE_COSTON2_CONFIG,
+  VERIFLOW_REGISTRY_V2_ADDRESS,
+  VERIFLOW_REGISTRY_V2_ABI,
+} from '../config/contracts';
 import type { VerificationReport } from '../types/veriflow';
 import { getWeb3Signer } from './wallet';
 
@@ -104,25 +108,37 @@ export async function anchorVerificationOnFlare(
       };
     }
 
-    // Step 4: Prepare calldata (bytes32 format for Solidity contract)
-    const verIdBytes32 = ethers.keccak256(ethers.toUtf8Bytes(report.id));
-    const claimHashBytes32 = report.hash.startsWith('0x') ? report.hash : `0x${report.hash}`;
-    const attestationHashBytes32 = ethers.keccak256(ethers.toUtf8Bytes(report.attestationId));
-    const signatureBytes = report.signature.startsWith('0x') ? report.signature : `0x${report.signature}`;
+    // The V2 registry authenticates the proof BEFORE recording it: it recovers
+    // the signer from the attestation and requires it to equal the registered
+    // TEE identity. The wallet only pays gas — it holds no authority (Flare's
+    // relay model: gas payer != authority).
+    if (!report.proof) {
+      return {
+        success: false,
+        errorMessage: 'This report has no signed proof to anchor.',
+      };
+    }
 
     const contract = new ethers.Contract(
-      VERIFLOW_REGISTRY_ADDRESS,
-      VERIFLOW_REGISTRY_ABI,
+      VERIFLOW_REGISTRY_V2_ADDRESS,
+      VERIFLOW_REGISTRY_V2_ABI,
       signer
     );
 
-    // Step 5: Broadcast real transaction — MetaMask will pop up for signature approval
+    // Step 5: Broadcast the real transaction — MetaMask pops up for approval.
+    const attestation = report.proof.attestation;
     const tx = await contract.anchorVerification(
-      verIdBytes32,
-      claimHashBytes32,
-      report.result,
-      attestationHashBytes32,
-      signatureBytes
+      [
+        attestation.verificationId,
+        attestation.subject,
+        attestation.claimHash,
+        attestation.result,
+        attestation.issuedAt,
+        attestation.expiresAt,
+        attestation.codeMeasurement,
+        attestation.attestationHash,
+      ],
+      report.proof.signature
     );
 
     const receipt = await tx.wait();

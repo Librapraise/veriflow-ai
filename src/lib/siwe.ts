@@ -48,7 +48,7 @@ export async function requestWalletConnection(): Promise<{ address: string; chai
     try {
       const accounts = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
       const chainIdHex = await (window as any).ethereum.request({ method: 'eth_chainId' });
-      const chainId = parseInt(chainIdHex, 16) || 14; // Default to Flare Coston2 (14) or Sepolia
+      const chainId = parseInt(chainIdHex, 16) || 114; // Flare Coston2 Testnet (Chain ID 114)
       return { address: accounts[0], chainId };
     } catch (err) {
       console.warn('Wallet connection rejected or unavailable, generating session wallet for mobile/demo', err);
@@ -61,7 +61,7 @@ export async function requestWalletConnection(): Promise<{ address: string; chai
 
   return {
     address: dynamicAddress,
-    chainId: 14 // Flare Testnet
+    chainId: 114 // Flare Coston2 Testnet
   };
 }
 

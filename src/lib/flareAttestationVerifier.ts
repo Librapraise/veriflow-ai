@@ -1,6 +1,6 @@
 /**
  * Flare Confidential Compute (FCC) / Flare Compute Extensions (FCE) Attestation Verifier
- * Verifies hardware TEE remote attestation quotes against Flare Enclave Allowlist.
+ * Verifies attestation quotes against Flare Enclave Allowlist.
  */
 
 import type { RemoteAttestationQuote } from '../types/veriflow';
@@ -27,11 +27,12 @@ export function verifyFlareAttestationQuote(
   return {
     isValid,
     measurementMatch,
-    hardwareTEE: quote.hardwareTEE || 'Flare Confidential Compute (Intel SGX / AMD SEV TEE)',
-    signatureScheme: quote.signatureScheme || 'Ed25519-TEE-Attested',
+    hardwareTEE: quote.hardwareTEE || 'Simulated Enclave (Flare Confidential Compute Model)',
+    signatureScheme: quote.signatureScheme || 'ECDSA-secp256k1-EIP191',
     verifiableProofHash: quote.enclaveMeasurementHex,
     details: isValid 
-      ? 'Attestation quote verified against Flare Enclave Measurement Allowlist. KMS key release authorized.' 
+      ? 'Attestation quote verified against Flare Enclave Measurement Allowlist. Key release authorized.' 
       : 'FAIL CLOSED: Remote Attestation Quote rejected by Flare KMS Allowlist.'
   };
 }
+
