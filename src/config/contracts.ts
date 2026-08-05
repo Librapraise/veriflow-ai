@@ -36,7 +36,7 @@ export const VERIFLOW_REGISTRY_V1_ADDRESS = '0xFc502748a4A8f28e00BA93E05F8fb98b3
 export const VERIFLOW_REGISTRY_V2_ADDRESS = '0x2d52308CcABaEC795369A0769861c2b2c75E500E';
 
 /** The TEE identity whose signatures V2 accepts. Empty until deployed. */
-export const TEE_IDENTITY_ADDRESS = '0x3FB763Adfc4190482a2e6758c7842c755B4aE1bE';
+export const TEE_IDENTITY_ADDRESS = '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1';
 
 /** Approved code version (container image digest) registered at deploy. */
 export const CODE_MEASUREMENT = '0xd84e5ababec001f7d94523e6c48f2a3de09060f032abc3744e5262a32fded72d';

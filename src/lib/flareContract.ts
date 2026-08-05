@@ -82,7 +82,17 @@ export async function anchorVerificationOnFlare(
       };
     }
 
-    const accounts: string[] = await window.ethereum.request({ method: 'eth_accounts' });
+    let accounts: string[] = await window.ethereum.request({ method: 'eth_accounts' });
+    if (!accounts || accounts.length === 0) {
+      try {
+        accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      } catch (reqErr: any) {
+        return {
+          success: false,
+          errorMessage: 'Wallet connection request declined in MetaMask.'
+        };
+      }
+    }
     if (!accounts || accounts.length === 0) {
       return {
         success: false,
@@ -151,8 +161,8 @@ export async function anchorVerificationOnFlare(
       blockNumber: receipt.blockNumber
     };
   } catch (err: any) {
-    const msg = err?.reason || err?.shortMessage || err?.message || 'Unknown error';
-    console.warn('Flare Coston2 on-chain anchoring skipped:', msg);
+    const msg = err?.reason || err?.shortMessage || err?.message || JSON.stringify(err) || 'Unknown error';
+    console.error('Flare Coston2 on-chain anchoring error:', err);
     return {
       success: false,
       errorMessage: msg

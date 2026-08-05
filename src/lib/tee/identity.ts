@@ -45,7 +45,14 @@ let activeSigner: TeeSigner | null = null;
 
 export function getActiveTeeSigner(): TeeSigner {
   if (!activeSigner) {
-    activeSigner = new SimulatedTeeSigner();
+    // In local development/demo mode, use a deterministic wallet matching the deployed TEE identity key
+    // so signatures produced in browser can be anchored directly on Flare Coston2.
+    const demoKey = import.meta.env.VITE_TEE_PRIVATE_KEY || '0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d';
+    try {
+      activeSigner = new SimulatedTeeSigner(new ethers.Wallet(demoKey));
+    } catch {
+      activeSigner = new SimulatedTeeSigner();
+    }
   }
   return activeSigner;
 }

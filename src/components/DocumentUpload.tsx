@@ -17,13 +17,15 @@ import {
   Check,
   Zap,
   Link,
-  Terminal
+  Terminal,
+  Loader2
 } from 'lucide-react';
 import type { DocumentType, ClaimType, VerificationReport } from '../types/veriflow';
 import { encryptDocumentClientSide } from '../lib/crypto';
 import { executeConfidentialComputeJob, type EnclaveExecutionProgress } from '../lib/enclaveSimulator';
 import { VeriFlowStore } from '../lib/apiStore';
 import { DEMO_PASSPORT_ADULT, DEMO_PASSPORT_MINOR, DEMO_PASSPORT_EXPIRED } from '../lib/tee/extractor';
+import { anchorVerificationOnFlare } from '../lib/flareContract';
 
 interface DocumentUploadProps {
   setUserSession: (session: any) => void;
@@ -48,6 +50,8 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   const [completedReport, setCompletedReport] = useState<VerificationReport | null>(null);
   const [errorState, setErrorState] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
+  const [isAnchoring, setIsAnchoring] = useState<boolean>(false);
+  const [anchorError, setAnchorError] = useState<string | null>(null);
 
   // Default sample file generator for instant one-click testing
   const handleUseSamplePassport = () => {
@@ -145,6 +149,26 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     navigator.clipboard.writeText(url);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  // Called directly from a button click so MetaMask's user-gesture
+  // requirement is satisfied and the approval popup actually appears.
+  const handleAnchorOnFlare = async () => {
+    if (!completedReport) return;
+    setIsAnchoring(true);
+    setAnchorError(null);
+    try {
+      const result = await anchorVerificationOnFlare(completedReport);
+      if (result.success && result.txHash) {
+        setCompletedReport(prev => prev ? { ...prev, txHash: result.txHash, explorerUrl: result.explorerUrl } : prev);
+      } else {
+        setAnchorError(result.errorMessage || 'Anchoring failed. Check the browser console for details.');
+      }
+    } catch (e: any) {
+      setAnchorError(e.message || 'Unexpected error during anchoring.');
+    } finally {
+      setIsAnchoring(false);
+    }
   };
 
   return (
@@ -497,8 +521,14 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
               </div>
               <div>
                 <div className="flex items-center space-x-2">
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    VERIFIED CLAIM
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                    completedReport.result 
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                      : completedReport.verificationStatus === 'UNVERIFIABLE' 
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
+                      : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                  }`}>
+                    {completedReport.result ? 'VERIFIED CLAIM' : completedReport.verificationStatus === 'UNVERIFIABLE' ? 'UNVERIFIABLE CLAIM' : 'DENIED CLAIM'}
                   </span>
                   <span className="text-xs text-slate-400 font-mono">ID: {completedReport.id}</span>
                 </div>
@@ -530,9 +560,9 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
               <span className="text-xs text-slate-400">Claim Result</span>
-              <div className="text-xl font-extrabold text-emerald-400 flex items-center space-x-2">
-                <CheckCircle2 className="w-5 h-5 shrink-0" />
-                <span>TRUE (Verified)</span>
+              <div className={`text-xl font-extrabold flex items-center space-x-2 ${completedReport.result ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {completedReport.result ? <CheckCircle2 className="w-5 h-5 shrink-0" /> : <AlertCircle className="w-5 h-5 shrink-0" />}
+                <span>{completedReport.result ? 'TRUE (Verified)' : 'FALSE (Denied)'}</span>
               </div>
             </div>
 
@@ -597,25 +627,37 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
               </a>
             </div>
           ) : (
-            <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-700/50 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-4 h-4 text-teal-400" />
+            <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-700/50 flex flex-col gap-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-4 h-4 text-teal-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-300">Not Yet Anchored On-Chain</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Cryptographic proof is signed and verifiable off-chain. Click below to anchor it permanently on Flare Coston2.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleAnchorOnFlare}
+                  disabled={isAnchoring}
+                  className="w-full sm:w-auto text-center justify-center flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-60 disabled:cursor-not-allowed text-slate-950 font-bold text-xs border border-teal-400 transition-all shrink-0 shadow-lg shadow-teal-500/20"
+                >
+                  {isAnchoring ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" />Waiting for MetaMask...</>
+                  ) : (
+                    <><Link className="w-3.5 h-3.5" />Anchor on Flare Coston2</>
+                  )}
+                </button>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-slate-300">Cryptographic Proof Signed Off-Chain</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  To anchor on Flare Coston2, your connected wallet needs free C2FLR testnet gas.
-                </p>
-              </div>
-              <a
-                href="https://faucet.flare.network/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto text-center justify-center flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-bold text-xs border border-amber-500/30 transition-all shrink-0"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Get Free C2FLR Gas
-              </a>
+              {anchorError && (
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{anchorError}</span>
+                </div>
+              )}
             </div>
           )}
 

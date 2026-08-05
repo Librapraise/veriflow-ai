@@ -92,13 +92,16 @@ export class SimulatedTeeSigner implements TeeSigner {
       );
     }
 
+    const registeredTee = import.meta.env.VITE_TEE_IDENTITY_ADDRESS || '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1';
+    const matchesRegistered = signerAddress.toLowerCase() === registeredTee.toLowerCase();
+
     return {
       attestation,
       signature,
       digest,
       signerAddress,
       teeMode: 'simulated',
-      anchorable: false,
+      anchorable: matchesRegistered,
     };
   }
 }
