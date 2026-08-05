@@ -23,7 +23,8 @@ import type {
 import { decryptInsideEnclaveMemory, sha256Hex } from './crypto';
 import { getActiveTeeSigner, getCodeMeasurement } from './tee/identity';
 import { VERIFLOW_REGISTRY_V2_ADDRESS } from '../config/contracts';
-import { extractFields, extractPdfBufferText } from './tee/extractor';
+import { extractFields } from './tee/extractor';
+import { extractDocumentText } from './tee/pdfExtractor';
 
 /**
  * The approved code version this executor reports.
@@ -38,6 +39,8 @@ export interface EnclaveExecutionOptions {
   claimType: ClaimType;
   documentType: DocumentType;
   documentId: string;
+  fileName: string;
+  mimeType?: string;
   userId: string;
   ciphertextBase64: string;
   ivHex: string;
@@ -59,25 +62,20 @@ export interface EnclaveExecutionProgress {
 async function extractSchemaFieldsInEnclaveRAM(
   _docType: DocumentType,
   rawBuffer: ArrayBuffer,
-  fileName: string
+  fileName: string,
+  mimeType?: string,
 ): Promise<any> {
-  let text = '';
-  try {
-    text = await extractPdfBufferText(rawBuffer);
-  } catch {
-    try {
-      text = new TextDecoder('utf-8').decode(rawBuffer);
-    } catch {
-      text = '';
-    }
-  }
+  const text = await extractDocumentText(rawBuffer, fileName, mimeType);
+  if (text.trim().length < 10) throw new Error('Document text extraction returned empty content');
 
   try {
     const fields = extractFields(text);
     if (fields && Object.keys(fields).length > 0) {
       return fields;
     }
-  } catch (e) {}
+  } catch {
+    // Demo presets remain available below; real documents fail closed with no fields.
+  }
 
   // Explicit demo preset sample file handling
   const nameLower = fileName.toLowerCase();
@@ -174,7 +172,7 @@ function evaluateClaimRuleInEnclaveRAM(
         return { result: false, verificationStatus: 'UNVERIFIABLE', confidenceScore: 0, claimDescription: 'Income or balance unreadable in document' };
       }
 
-      const docCurrency = extracted?.currency || 'USD';
+      const docCurrency = String(extracted?.currency || 'USD').toUpperCase();
       // Currency conversion handling:
       // If document is in NGN (Naira): 1 USD = ~1,500 NGN.
       // E.g. 3,064,360.87 NGN converted to USD: 3,064,360.87 / 1500 = $2,042.91 USD
@@ -183,12 +181,24 @@ function evaluateClaimRuleInEnclaveRAM(
         valInUSD = rawVal / 1500;
       }
 
-      // Check if raw value or converted USD value exceeds threshold
-      result = rawVal >= threshold || valInUSD >= threshold;
+      // Thresholds in the current UI are USD-denominated. Do not compare a raw
+      // foreign-currency amount directly with a USD threshold.
+      result = valInUSD >= threshold;
       verificationStatus = result ? 'VERIFIED' : 'DENIED';
 
-      const symbol = docCurrency === 'NGN' ? '₦' : docCurrency === 'EUR' ? '€' : docCurrency === 'GBP' ? '£' : '$';
-      const formattedNative = `${symbol}${rawVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${docCurrency}`;
+      let formattedNative: string;
+      try {
+        formattedNative = new Intl.NumberFormat(docCurrency === 'NGN' ? 'en-NG' : undefined, {
+          style: 'currency',
+          currency: docCurrency,
+          currencyDisplay: 'narrowSymbol',
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(rawVal);
+      } catch {
+        formattedNative = `${rawVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${docCurrency}`;
+      }
+      formattedNative = `${formattedNative} ${docCurrency}`;
       const formattedUsd = docCurrency === 'NGN' ? ` (~$${Math.round(valInUSD).toLocaleString()} USD)` : '';
 
       claimDescription = result
@@ -196,7 +206,18 @@ function evaluateClaimRuleInEnclaveRAM(
         : `Income check DENIED: Amount (${formattedNative}${formattedUsd}) below threshold ($${threshold.toLocaleString()})`;
       break;
     }
-    case 'currently_employed':
+    case 'currently_employed': {
+      const employer = extracted?.employer_name || extracted?.roles?.[0]?.employer;
+      if (!employer) {
+        return { result: false, verificationStatus: 'UNVERIFIABLE', confidenceScore: 0, claimDescription: 'No employer or active role found in document' };
+      }
+      const endDate = extracted?.roles?.[0]?.end_date;
+      const isCurrent = !endDate || /^(?:present|current|now)$/i.test(endDate.trim()) || /\b202[4-9]\b/i.test(endDate);
+      result = isCurrent;
+      verificationStatus = result ? 'VERIFIED' : 'DENIED';
+      claimDescription = result ? `Active employment confirmed (${employer})` : `Employment ended (${endDate})`;
+      break;
+    }
     case 'company_matches':
     case 'role_matches':
     case 'tenure_min_months':
@@ -212,7 +233,19 @@ function evaluateClaimRuleInEnclaveRAM(
         : 'Employment check DENIED: No active employment found';
       break;
     }
-    case 'degree_verified':
+    case 'degree_verified': {
+      const degree = extracted?.degree_title || extracted?.education?.[0]?.degree;
+      const inst = extracted?.institution || extracted?.education?.[0]?.institution;
+      if (!degree && !inst) {
+        return { result: false, verificationStatus: 'UNVERIFIABLE', confidenceScore: 0, claimDescription: 'No degree or university credentials found in document' };
+      }
+      result = Boolean(degree && inst);
+      verificationStatus = result ? 'VERIFIED' : 'UNVERIFIABLE';
+      claimDescription = result
+        ? `Degree verified (${degree} from ${inst})`
+        : `Partial credential (missing ${degree ? 'institution' : 'degree'})`;
+      break;
+    }
     case 'university_verified':
     case 'field_matches': {
       const degree = extracted?.degree_title || (extracted?.education && extracted.education[0]?.degree);
@@ -227,10 +260,12 @@ function evaluateClaimRuleInEnclaveRAM(
       break;
     }
     default: {
-      result = true;
-      verificationStatus = 'VERIFIED';
-      claimDescription = `Claim payload (${claimType}) verified successfully`;
-      break;
+      return {
+        result: false,
+        verificationStatus: 'UNVERIFIABLE',
+        confidenceScore: 0,
+        claimDescription: `Unrecognized claim: ${claimType}`,
+      };
     }
   }
 
@@ -304,7 +339,12 @@ export async function executeConfidentialComputeJob(
   const fieldSummary = options.claimType.startsWith('age') ? 'Extracted date_of_birth field only' : 'Extracted schema fields for claim check';
   notify('OCR_EXTRACTION', `AI OCR pipeline running schema extraction inside enclave boundary (${fieldSummary})...`, attestationQuote, fieldSummary);
   
-  let extractedFields = await extractSchemaFieldsInEnclaveRAM(options.documentType, decryptedBuffer, options.documentId);
+  let extractedFields = await extractSchemaFieldsInEnclaveRAM(
+    options.documentType,
+    decryptedBuffer,
+    options.fileName,
+    options.mimeType,
+  );
   await new Promise(r => setTimeout(r, 500));
 
   // 4. Rule Evaluation
@@ -364,36 +404,14 @@ export async function executeConfidentialComputeJob(
     revoked: false
   };
 
-  // 7. On-chain anchoring on Flare Coston2 — automatically prompts MetaMask for approval
-  if (!VERIFLOW_REGISTRY_V2_ADDRESS) {
-    notify(
-      'ANCHOR_ON_CHAIN',
-      'Skipping on-chain anchor: VeriFlowRegistryV2 address is not configured.',
-      attestationQuote,
-    );
-  } else {
-    notify('ANCHOR_ON_CHAIN', 'Anchoring signed attestation to VeriFlowRegistryV2 on Flare Coston2 (MetaMask approval required)...', attestationQuote);
-    try {
-      const { anchorVerificationOnFlare } = await import('./flareContract');
-      const anchorRes = await anchorVerificationOnFlare(report);
-      if (anchorRes.txHash) {
-        report.txHash = anchorRes.txHash;
-        report.explorerUrl = anchorRes.explorerUrl;
-        notify('ANCHOR_ON_CHAIN', `Anchored on Flare Coston2! Tx: ${anchorRes.txHash}`, attestationQuote);
-      } else if (anchorRes.errorMessage) {
-        notify('ANCHOR_ON_CHAIN', `Anchoring status: ${anchorRes.errorMessage}`, attestationQuote);
-        console.warn('Anchoring notice:', anchorRes.errorMessage);
-      }
-    } catch (e: any) {
-      console.warn('On-chain anchoring error:', e);
-      notify('ANCHOR_ON_CHAIN', `Not anchored: ${e.message || e}`, attestationQuote);
-    }
-  }
-
+  // On-chain anchoring remains a separate user action after verification.
+  // Wallet prompts must originate from the explicit "Anchor on Flare" button.
+  // Awaiting MetaMask here can leave verification pending indefinitely when a
+  // non-user-initiated popup is suppressed or goes unnoticed.
   notify(
     'COMPLETE',
-    report.txHash
-      ? 'Verification signed and anchored on Flare Coston2.'
+    VERIFLOW_REGISTRY_V2_ADDRESS
+      ? 'Verification signed. Proof is ready for optional on-chain anchoring.'
       : 'Verification signed. The proof is independently verifiable off-chain.',
     attestationQuote,
   );

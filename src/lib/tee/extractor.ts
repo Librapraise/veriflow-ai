@@ -32,6 +32,100 @@ export class UnsupportedDocumentError extends Error {
   }
 }
 
+const SUPPORTED_CURRENCY_CODES = [
+  'NGN', 'USD', 'EUR', 'GBP', 'GHS', 'ZAR', 'KES', 'CAD', 'AUD', 'JPY', 'CNY', 'INR',
+] as const;
+
+function detectDocumentCurrency(text: string): string | undefined {
+  const normalized = text
+    .normalize('NFKC')
+    .replace(/\bN\s*G\s*N\b/gi, 'NGN')
+    .replace(/\bU\s*S\s*D\b/gi, 'USD')
+    .toUpperCase();
+  const codePattern = SUPPORTED_CURRENCY_CODES.join('|');
+  const explicitCode = normalized.match(
+    new RegExp(`(?:CURRENCY|CURR(?:ENCY)?\\s*CODE)\\s*[:=\\-]?\\s*(${codePattern})\\b`, 'i'),
+  );
+  if (explicitCode) return explicitCode[1].toUpperCase();
+
+  if (/\b(?:NGN|NAIRA)\b/i.test(normalized) || text.includes('₦')) return 'NGN';
+  if (/\bGHS\b/i.test(normalized) || text.includes('₵')) return 'GHS';
+  if (/\b(?:ZAR|RAND)\b/i.test(normalized) || text.includes('R ')) return 'ZAR';
+  if (/\bKES\b/i.test(normalized) || /\bKSH\b/i.test(normalized)) return 'KES';
+  if (/\bEUR\b/i.test(normalized) || text.includes('€')) return 'EUR';
+  if (/\bGBP\b/i.test(normalized) || text.includes('£')) return 'GBP';
+  if (/\bINR\b/i.test(normalized) || text.includes('₹')) return 'INR';
+  if (/\bJPY\b/i.test(normalized) || text.includes('¥')) return 'JPY';
+  if (/\bCNY\b/i.test(normalized) || text.includes('CN¥')) return 'CNY';
+  if (/\bCAD\b/i.test(normalized)) return 'CAD';
+  if (/\bAUD\b/i.test(normalized)) return 'AUD';
+  if (/\bUSD\b/i.test(normalized) || text.includes('$')) return 'USD';
+  return undefined;
+}
+
+function extractInstitutionName(text: string): string | undefined {
+  const normalized = text
+    .replace(/[|_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const patterns = [
+    /\b(?:the\s+)?university\s+of\s+[A-Za-z][A-Za-z&'.-]*(?:\s+(?:of|the|and|&|[A-Za-z][A-Za-z&'.-]*)){0,5}\b/i,
+    /\b(?:the\s+)?[A-Za-z][A-Za-z&'.-]*(?:\s+(?:of|the|and|&|[A-Za-z][A-Za-z&'.-]*)){0,5}\s+(?:university|college|polytechnic|academy)\b/i,
+    /\b(?:the\s+)?[A-Za-z][A-Za-z&'.-]*(?:\s+(?:of|the|and|&|[A-Za-z][A-Za-z&'.-]*)){0,4}\s+institute\s+of\s+[A-Za-z][A-Za-z&'.-]*(?:\s+[A-Za-z][A-Za-z&'.-]*){0,3}\b/i,
+    /\b(?:the\s+)?[A-Za-z][A-Za-z&'.-]*(?:\s+(?:of|the|and|&|[A-Za-z][A-Za-z&'.-]*)){0,5}\s+institute\b/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (!match) continue;
+
+    let candidate = cleanPdfTextString(match[0]);
+    const lastArticle = candidate.toLowerCase().lastIndexOf('the ');
+    if (lastArticle > 0) candidate = candidate.slice(lastArticle);
+
+    const words = candidate.split(/\s+/);
+    while (words.length > 2 && words[0].length <= 2 && words[0].toLowerCase() !== 'of') {
+      words.shift();
+    }
+    candidate = words.join(' ').trim();
+
+    if (candidate.length >= 8) return candidate;
+  }
+
+  return undefined;
+}
+
+function extractDegreeTitle(text: string): string | undefined {
+  const normalized = text
+    .replace(/[|_]+/g, ' ')
+    .replace(/\bB\s*[.,]?\s*(SC|ENG|TECH|ED|A|LAW)\b/gi, 'B.$1')
+    .replace(/\bM\s*[.,]?\s*(SC|ENG|TECH|ED|A|LAW)\b/gi, 'M.$1')
+    .replace(/\bP\s*[.,]?\s*H\s*[.,]?\s*D\b/gi, 'Ph.D')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const patterns = [
+    /\b(?:bachelor|master|doctor(?:ate)?|associate)(?:'s)?(?:\s+degree)?\s+(?:of|in)\s+[A-Za-z][A-Za-z&'.-]*(?:\s+(?:of|the|and|&|in|[A-Za-z][A-Za-z&'.-]*)){0,5}\b/i,
+    /\b(?:higher\s+national\s+diploma|ordinary\s+national\s+diploma|national\s+diploma)(?:\s+(?:in|of)\s+[A-Za-z][A-Za-z&'.-]*(?:\s+[A-Za-z][A-Za-z&'.-]*){0,5})?\b/i,
+    /\b(?:B\.(?:SC|ENG|TECH|ED|A|LAW)|M\.(?:SC|ENG|TECH|ED|A|LAW)|PH\.D|HND|OND|ND)\.?\b/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (!match) continue;
+
+    const candidate = cleanPdfTextString(match[0])
+      .split(/\b(?:awarded|conferred|certificate|university|college|polytechnic|institute|dated|having|hereby)\b/i)[0]
+      .replace(/\s+(?:with|from|at|by)\s*$/i, '')
+      .trim();
+
+    if (candidate.length >= 3 && !/^degree$/i.test(candidate)) return candidate;
+  }
+
+  return undefined;
+}
+
 /**
  * Calculates ICAO 7-3-1 check digit for MRZ string slice.
  */
@@ -178,8 +272,8 @@ export async function extractPdfBufferText(rawBuffer: ArrayBuffer): Promise<stri
         try {
           const ds = new DecompressionStream('deflate');
           const writer = ds.writable.getWriter();
-          writer.write(streamBytes);
-          writer.close();
+          await writer.write(streamBytes);
+          await writer.close();
           const response = new Response(ds.readable);
           const inflatedBuffer = await response.arrayBuffer();
           const inflatedText = new TextDecoder('utf-8').decode(inflatedBuffer);
@@ -190,8 +284,8 @@ export async function extractPdfBufferText(rawBuffer: ArrayBuffer): Promise<stri
           try {
             const ds = new DecompressionStream('deflate-raw');
             const writer = ds.writable.getWriter();
-            writer.write(streamBytes);
-            writer.close();
+            await writer.write(streamBytes);
+            await writer.close();
             const response = new Response(ds.readable);
             const inflatedBuffer = await response.arrayBuffer();
             const inflatedText = new TextDecoder('utf-8').decode(inflatedBuffer);
@@ -218,7 +312,7 @@ export async function extractPdfBufferText(rawBuffer: ArrayBuffer): Promise<stri
     }
   }
 
-  return decompressedChunks.join('\n') + '\n' + parenthesisTexts.join(' ');
+  return combinedRaw + '\n' + parenthesisTexts.join(' ');
 }
 
 function cleanPdfTextString(raw: string): string {
@@ -266,18 +360,8 @@ export function extractFields(fileTextOrBuffer: string): ExtractedFields {
 
   const resultFields: ExtractedFields = {};
 
-  // Dynamic Currency Detection
-  const currencyMatch = fullText.match(/(?:CURRENCY|CURR)\s*[:\s]*([A-Z]{3}|[₦\$€£])/i);
-  let currency = 'USD';
-  if (currencyMatch) {
-    const rawCurr = currencyMatch[1].toUpperCase();
-    if (rawCurr === 'NGN' || rawCurr === '₦') currency = 'NGN';
-    else if (rawCurr === 'EUR' || rawCurr === '€') currency = 'EUR';
-    else if (rawCurr === 'GBP' || rawCurr === '£') currency = 'GBP';
-    else currency = rawCurr;
-  } else if (fullText.includes('NGN') || fullText.includes('₦') || fullText.includes('Naira')) {
-    currency = 'NGN';
-  }
+  // Prefer explicit ISO currency declarations, then symbols and currency names.
+  const currency = detectDocumentCurrency(text + '\n' + fullText);
 
   // Dynamic Bank Statement & Account Holder Extraction
   const accountNameMatch = fullText.match(/(?:account\s*name|account\s*holder|name)\s*[:\s]*([A-Z\.\s]{3,35})/i);
@@ -307,7 +391,7 @@ export function extractFields(fileTextOrBuffer: string): ExtractedFields {
   if (maxAmount > 0) {
     resultFields.gross_income = maxAmount;
     resultFields.average_balance = maxAmount;
-    resultFields.currency = currency;
+    if (currency) resultFields.currency = currency;
   }
 
   // Dynamic Employer / Company Extraction
@@ -317,21 +401,13 @@ export function extractFields(fileTextOrBuffer: string): ExtractedFields {
   }
 
   // 2. Degree Title & Academic Institution Extraction
-  const degreeMatch = fullText.match(/\b(?:bachelor(?:\s+of\s+[A-Za-z\s]{3,30})?|master(?:\s+of\s+[A-Za-z\s]{3,30})?|doctorate|b\.?eng|b\.?sc?|b\.?a|m\.?sc?|m\.?a|ph\.?d|diploma|degree)\b/i);
-  if (degreeMatch) {
-    const cleaned = cleanPdfTextString(degreeMatch[0]);
-    if (cleaned.length > 2) {
-      resultFields.degree_title = cleaned;
-    }
-  }
+  // Standalone words such as "degree" are not credentials. Keep matches
+  // bounded so OCR noise and surrounding certificate prose are not absorbed.
+  const degreeTitle = extractDegreeTitle(text + '\n' + fullText);
+  if (degreeTitle) resultFields.degree_title = degreeTitle;
 
-  const instMatch = fullText.match(/\b(?:federal\s+university\s+of\s+technology[A-Za-z\s,]{0,25}|[A-Za-z\s]{3,30}\s+university|[A-Za-z\s]{3,30}\s+college|[A-Za-z\s]{3,30}\s+polytechnic)\b/i);
-  if (instMatch) {
-    const cleaned = cleanPdfTextString(instMatch[0]);
-    if (cleaned.length > 3) {
-      resultFields.institution = cleaned;
-    }
-  }
+  const institution = extractInstitutionName(text + '\n' + fullText);
+  if (institution) resultFields.institution = institution;
 
   // 3. Resume & Employment Role Extraction
   const roleMatch = fullText.match(/\b(?:software\s+engineer|full\s*stack|frontend|backend|data\s+scientist|project\s+manager|product\s+manager|developer|engineer|manager|architect|consultant|analyst|intern|lead)\b/i);

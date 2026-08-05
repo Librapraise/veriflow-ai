@@ -286,6 +286,8 @@ export class VeriFlowStore {
       claimType: params.claimType,
       documentType: doc ? doc.type : 'passport',
       documentId: doc ? doc.id : 'doc_demo_api',
+      fileName: doc?.fileName || 'api_upload.pdf',
+      mimeType: doc?.mimeType || 'application/pdf',
       userId: params.walletAddress || '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
       ciphertextBase64,
       ivHex,

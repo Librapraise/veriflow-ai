@@ -89,8 +89,17 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     setErrorState(null);
     setExecutionSteps([]);
     setCompletedReport(null);
+    setAnchorError(null);
 
     try {
+      if (!window.ethereum) {
+        throw new Error('MetaMask is required to verify and anchor this proof on Flare Coston2.');
+      }
+
+      // Run directly from the click handler so MetaMask can show its connection
+      // prompt immediately. The transaction approval follows after TEE signing.
+      await window.ethereum.request({ method: 'eth_requestAccounts' });
+
       // Step 1: Client-Side AES-256 Encryption
       const encryptionResult = await encryptDocumentClientSide(file);
 
@@ -117,6 +126,8 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
           claimType,
           documentType,
           documentId: docId,
+          fileName: file.name,
+          mimeType: file.type,
           userId: VeriFlowStore.getUserSession().address,
           ciphertextBase64: encryptionResult.ciphertextBase64,
           ivHex: encryptionResult.ivHex,
@@ -129,16 +140,39 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         }
       );
 
-      // Save verification report
-      VeriFlowStore.addVerification(report);
+      setIsAnchoring(true);
+      setExecutionSteps(prev => [...prev, {
+        step: 'ANCHOR_ON_CHAIN',
+        message: 'Waiting for MetaMask transaction approval on Flare Coston2...',
+        quote: report.attestationQuote,
+      }]);
+
+      const anchorResult = await anchorVerificationOnFlare(report);
+      const finalReport = anchorResult.success && anchorResult.txHash
+        ? { ...report, txHash: anchorResult.txHash, explorerUrl: anchorResult.explorerUrl }
+        : report;
+
+      if (anchorResult.success && anchorResult.txHash) {
+        setExecutionSteps(prev => [...prev, {
+          step: 'ANCHOR_ON_CHAIN',
+          message: `Transaction confirmed: ${anchorResult.txHash}`,
+          quote: report.attestationQuote,
+        }]);
+      } else {
+        setAnchorError(anchorResult.errorMessage || 'The proof was signed but could not be anchored on Flare Coston2.');
+      }
+
+      // Save the signed report even if the user declines the optional chain transaction.
+      VeriFlowStore.addVerification(finalReport);
       setUserSession(VeriFlowStore.getUserSession());
-      setCompletedReport(report);
-      if (onVerificationComplete) onVerificationComplete(report);
+      setCompletedReport(finalReport);
+      if (onVerificationComplete) onVerificationComplete(finalReport);
 
     } catch (err: any) {
       console.error('Verification error:', err);
       setErrorState(err.message || 'Verification failed. Attestation rejected by KMS.');
     } finally {
+      setIsAnchoring(false);
       setIsProcessing(false);
     }
   };
@@ -458,10 +492,15 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                   { title: 'In-Memory RAM Decryption', detail: 'Decrypted into hardware-protected RAM only' },
                   { title: 'AI Schema Extraction', detail: 'OCR reads only required field internally' },
                   { title: 'RAM Zeroing & Memory Purge', detail: 'Plaintext & PII wiped from enclave RAM' },
-                  { title: 'Enclave Result Signing', detail: 'Signed with SK_enclave & emitted to verifier' }
+                  { title: 'Enclave Result Signing', detail: 'Signed with SK_enclave & emitted to verifier' },
+                  { title: 'Flare Transaction Approval', detail: 'Approve the registry transaction in MetaMask' }
                 ].map((step, idx) => {
-                  const isDone = executionSteps.length > idx;
-                  const isCurrent = executionSteps.length === idx && isProcessing;
+                  const isAnchorStep = idx === 7;
+                  const anchorConfirmed = executionSteps.some(
+                    progress => progress.step === 'ANCHOR_ON_CHAIN' && progress.message.startsWith('Transaction confirmed:'),
+                  );
+                  const isDone = isAnchorStep ? anchorConfirmed : executionSteps.length > idx;
+                  const isCurrent = isAnchorStep ? isAnchoring : executionSteps.length === idx && isProcessing;
 
                   return (
                     <div 

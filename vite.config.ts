@@ -8,5 +8,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  optimizeDeps: {
+    include: ['pdfjs-dist', 'tesseract.js'],
+  },
 })
-
