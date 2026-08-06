@@ -1,174 +1,72 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Navbar } from './components/Navbar';
-import { LandingPage } from './components/LandingPage';
-import { Dashboard } from './components/Dashboard';
-import { DocumentUpload } from './components/DocumentUpload';
-import { VerificationHistory } from './components/VerificationHistory';
-import { DeveloperPortal } from './components/DeveloperPortal';
 import { AIAssistant } from './components/AIAssistant';
-import { PublicVerifier } from './components/PublicVerifier';
-import type { UserSession } from './types/veriflow';
 import { AttestationViewer } from './components/AttestationViewer';
+import { Dashboard } from './components/Dashboard';
+import { DeveloperPortal } from './components/DeveloperPortal';
+import { DocumentUpload } from './components/DocumentUpload';
+import { LandingPage } from './components/LandingPage';
+import { PublicNavbar } from './components/PublicNavbar';
+import { PublicVerifier } from './components/PublicVerifier';
+import { VerificationHistory } from './components/VerificationHistory';
+import { VerificationRequestsPage } from './components/VerificationRequestsPage';
+import { WorkspaceNavbar } from './components/WorkspaceNavbar';
+import { requestWalletConnection } from './lib/siwe';
 import { VeriFlowStore } from './lib/apiStore';
+import { useAppRouter } from './lib/router';
+import type { UserSession } from './types/veriflow';
+
+const tabPaths: Record<string, string> = { landing: '/', dashboard: '/app/dashboard', verify: '/app/verify', verifier: '/verifier', history: '/app/history', developer: '/app/developer', assistant: '/app/assistant' };
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<'landing' | 'dashboard' | 'verify' | 'verifier' | 'history' | 'developer' | 'assistant'>('landing');
+  const { route, navigate } = useAppRouter();
   const [userSession, setUserSession] = useState<UserSession>(VeriFlowStore.getUserSession());
-  
-  const [isAttestationModalOpen, setIsAttestationModalOpen] = useState<boolean>(false);
-  const [simulatedFailAttestation, setSimulatedFailAttestation] = useState<boolean>(false);
+  const [isAttestationModalOpen, setIsAttestationModalOpen] = useState(false);
+  const [simulatedFailAttestation, setSimulatedFailAttestation] = useState(false);
+  const isWorkspace = route.path.startsWith('/app/');
 
-  // Sync session changes and detect proof links in URL hash or query params
-  useEffect(() => {
-    VeriFlowStore.setUserSession(userSession);
-
-    if (typeof window !== 'undefined') {
-      if (window.location.hash.length > 1 || window.location.search.includes('verify_id=')) {
-        setActiveTab('verifier');
+  const navigateTab = (tab: string) => navigate(tabPaths[tab] || '/');
+  const connectWallet = async () => {
+    try {
+      const { connectMetaMaskWallet } = await import('./lib/wallet');
+      const wallet = await connectMetaMaskWallet();
+      if (wallet.isConnected) {
+        const session = { ...VeriFlowStore.getUserSession(), address: wallet.address, isConnected: true, chainId: wallet.chainId };
+        VeriFlowStore.setUserSession(session); setUserSession(session); return;
       }
+    } catch {
+      const wallet = await requestWalletConnection();
+      const session = { ...VeriFlowStore.getUserSession(), address: wallet.address, isConnected: true, chainId: wallet.chainId };
+      VeriFlowStore.setUserSession(session); setUserSession(session);
     }
-  }, [userSession]);
+  };
+  const disconnect = () => { const session: UserSession = { address: '', isConnected: false, chainId: 114, trustScore: 0, documentsCount: 0, verificationsCount: 0 }; VeriFlowStore.setUserSession(session); setUserSession(session); };
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-teal-500 selection:text-slate-950">
-      
-      {/* Navigation */}
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        userSession={userSession}
-        setUserSession={setUserSession}
-        onOpenAttestationModal={() => setIsAttestationModalOpen(true)}
-      />
+  const proofId = route.params.proofId || route.query.get('verify_id');
+  const proofReport = proofId ? VeriFlowStore.getVerificationById(proofId) : undefined;
+  const requestId = route.query.get('request_id') || undefined;
 
-      {/* Main View Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <AnimatePresence mode="wait">
-          {activeTab === 'landing' && (
-            <motion.div
-              key="landing"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-            >
-              <LandingPage 
-                setActiveTab={setActiveTab}
-                onOpenAttestationModal={() => setIsAttestationModalOpen(true)}
-              />
-            </motion.div>
-          )}
+  const renderPage = () => {
+    if (route.path === '/') return <LandingPage setActiveTab={navigateTab} onOpenAttestationModal={() => setIsAttestationModalOpen(true)} />;
+    if (route.path === '/verifier' || route.path.startsWith('/verifier/')) return <PublicVerifier proofPayload={proofReport ? JSON.stringify(proofReport) : null} />;
+    if (route.path === '/app/dashboard') return <Dashboard userSession={userSession} setActiveTab={navigateTab} onOpenAttestationModal={() => setIsAttestationModalOpen(true)} />;
+    if (route.path === '/app/verify') return <DocumentUpload setUserSession={setUserSession} onOpenAttestationModal={() => setIsAttestationModalOpen(true)} simulatedFailAttestation={simulatedFailAttestation} requestId={requestId} />;
+    if (route.path === '/app/history') return <VerificationHistory onOpenAttestationModal={() => setIsAttestationModalOpen(true)} />;
+    if (route.path === '/app/requests') return <VerificationRequestsPage />;
+    if (route.path === '/app/developer') return <DeveloperPortal />;
+    if (route.path === '/app/assistant') return <AIAssistant setActiveTab={navigateTab} />;
+    return isWorkspace
+      ? <Dashboard userSession={userSession} setActiveTab={navigateTab} onOpenAttestationModal={() => setIsAttestationModalOpen(true)} />
+      : <LandingPage setActiveTab={navigateTab} onOpenAttestationModal={() => setIsAttestationModalOpen(true)} />;
+  };
 
-          {activeTab === 'dashboard' && (
-            <motion.div
-              key="dashboard"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-            >
-              <Dashboard 
-                userSession={userSession}
-                setActiveTab={setActiveTab}
-                onOpenAttestationModal={() => setIsAttestationModalOpen(true)}
-              />
-            </motion.div>
-          )}
-
-          {activeTab === 'verify' && (
-            <motion.div
-              key="verify"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-            >
-              <DocumentUpload 
-                setUserSession={setUserSession}
-                onOpenAttestationModal={() => setIsAttestationModalOpen(true)}
-                simulatedFailAttestation={simulatedFailAttestation}
-              />
-            </motion.div>
-          )}
-
-          {activeTab === 'verifier' && (
-            <motion.div
-              key="verifier"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-            >
-              <PublicVerifier />
-            </motion.div>
-          )}
-
-          {activeTab === 'history' && (
-            <motion.div
-              key="history"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-            >
-              <VerificationHistory 
-                onOpenAttestationModal={() => setIsAttestationModalOpen(true)}
-              />
-            </motion.div>
-          )}
-
-          {activeTab === 'developer' && (
-            <motion.div
-              key="developer"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-            >
-              <DeveloperPortal />
-            </motion.div>
-          )}
-
-          {activeTab === 'assistant' && (
-            <motion.div
-              key="assistant"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-            >
-              <AIAssistant 
-                setActiveTab={setActiveTab}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
-
-      {/* TEE Attestation Inspector Modal */}
-      <AttestationViewer
-        isOpen={isAttestationModalOpen}
-        onClose={() => setIsAttestationModalOpen(false)}
-        simulatedFailAttestation={simulatedFailAttestation}
-        setSimulatedFailAttestation={setSimulatedFailAttestation}
-      />
-
-      {/* Footer */}
-      <footer className="border-t border-slate-800/80 bg-slate-950 py-8 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center space-x-2">
-            <span className="w-2 h-2 rounded-full bg-teal-400" />
-            <span className="font-semibold text-slate-400">VeriFlow AI · Flare Summer Signal Hackathon 2026</span>
-          </div>
-          <p className="text-[11px]">
-            Privacy-Preserving Verification powered by Flare Confidential Compute TEE Enclaves.
-          </p>
-        </div>
-      </footer>
-
-    </div>
-  );
+  return <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-teal-500 selection:text-slate-950">
+    {isWorkspace ? <WorkspaceNavbar userSession={userSession} current={route.path} onNavigate={navigate} onOpenAttestation={() => setIsAttestationModalOpen(true)} onDisconnect={disconnect} /> : <PublicNavbar userSession={userSession} onNavigate={navigate} onConnect={connectWallet} />}
+    <main className={isWorkspace ? 'max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-7' : ''}>
+      <AnimatePresence mode="wait"><motion.div key={route.path + route.query.toString()} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }}>{renderPage()}</motion.div></AnimatePresence>
+    </main>
+    <AttestationViewer isOpen={isAttestationModalOpen} onClose={() => setIsAttestationModalOpen(false)} simulatedFailAttestation={simulatedFailAttestation} setSimulatedFailAttestation={setSimulatedFailAttestation} />
+  </div>;
 }
 
 export default App;

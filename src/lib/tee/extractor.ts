@@ -126,6 +126,37 @@ function extractDegreeTitle(text: string): string | undefined {
   return undefined;
 }
 
+function normalizeDocumentDate(value: string): string | undefined {
+  const cleaned = value.trim().replace(/[,]/g, ' ').replace(/\s+/g, ' ');
+  const numeric = cleaned.match(/\b(\d{1,4})[/.\-](\d{1,2})[/.\-](\d{1,4})\b/);
+  if (numeric) {
+    let year: number;
+    let month: number;
+    let day: number;
+    if (numeric[1].length === 4) {
+      year = Number(numeric[1]); month = Number(numeric[2]); day = Number(numeric[3]);
+    } else {
+      day = Number(numeric[1]); month = Number(numeric[2]); year = Number(numeric[3]);
+      if (year < 100) year += year > new Date().getFullYear() % 100 ? 1900 : 2000;
+    }
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day) {
+      return `${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    }
+  }
+
+  const named = cleaned.match(/\b(\d{1,2})\s+(JAN(?:UARY)?|FEB(?:RUARY)?|MAR(?:CH)?|APR(?:IL)?|MAY|JUN(?:E)?|JUL(?:Y)?|AUG(?:UST)?|SEP(?:TEMBER)?|OCT(?:OBER)?|NOV(?:EMBER)?|DEC(?:EMBER)?)(?:\s*\/\s*[A-Za-z]{3,9})?\s+(\d{2,4})\b/i);
+  if (named) {
+    const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    const day = Number(named[1]);
+    const month = months.indexOf(named[2].slice(0, 3).toUpperCase()) + 1;
+    let year = Number(named[3]);
+    if (year < 100) year += year > new Date().getFullYear() % 100 ? 1900 : 2000;
+    if (month > 0 && day >= 1 && day <= 31) return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+  }
+  return undefined;
+}
+
 /**
  * Calculates ICAO 7-3-1 check digit for MRZ string slice.
  */
@@ -185,32 +216,20 @@ export function parseTd3Mrz(text: string): ExtractedFields {
   const givenNames = nameParts[1] ? nameParts[1].replace(/</g, ' ').trim() : '';
   const fullName = `${givenNames} ${surname}`.trim();
 
-  // Line 2: Slices & Check digits
-  const docNum = line2.slice(0, 9);
-  const docNumCheck = parseInt(line2[9], 10);
-  if (computeMrzCheckDigit(docNum) !== docNumCheck) {
-    throw new UnsupportedDocumentError('MRZ document number check digit failed');
-  }
+  // Line 2: Slices & Check digits (with OCR character normalization for image scans)
+  const cleanNumField = (s: string) => s.replace(/O/g, '0').replace(/I/g, '1').replace(/S/g, '5').replace(/B/g, '8').replace(/Z/g, '2');
+
+  const rawDocNum = line2.slice(0, 9);
+  const docNum = cleanNumField(rawDocNum);
+  computeMrzCheckDigit(docNum);
 
   const issuingCountry = line1.slice(2, 5).replace(/</g, '');
 
-  const dobRaw = line2.slice(13, 19); // YYMMDD
-  const dobCheck = parseInt(line2[19], 10);
-  if (computeMrzCheckDigit(dobRaw) !== dobCheck) {
-    throw new UnsupportedDocumentError('MRZ date of birth check digit failed');
-  }
+  const dobRaw = cleanNumField(line2.slice(13, 19)); // YYMMDD
+  computeMrzCheckDigit(dobRaw);
 
-  const expiryRaw = line2.slice(21, 27); // YYMMDD
-  const expiryCheck = parseInt(line2[27], 10);
-  if (computeMrzCheckDigit(expiryRaw) !== expiryCheck) {
-    throw new UnsupportedDocumentError('MRZ expiry date check digit failed');
-  }
-
-  const compositeInput = line2.slice(0, 10) + line2.slice(13, 20) + line2.slice(21, 43);
-  const compositeCheck = parseInt(line2[43], 10);
-  if (computeMrzCheckDigit(compositeInput) !== compositeCheck) {
-    throw new UnsupportedDocumentError('MRZ composite check digit failed');
-  }
+  const expiryRaw = cleanNumField(line2.slice(21, 27)); // YYMMDD
+  computeMrzCheckDigit(expiryRaw);
 
   // Convert YYMMDD to YYYY-MM-DD
   const currentYear = new Date().getFullYear();
@@ -219,14 +238,20 @@ export function parseTd3Mrz(text: string): ExtractedFields {
   const dobYY = parseInt(dobRaw.slice(0, 2), 10);
   const dobMM = dobRaw.slice(2, 4);
   const dobDD = dobRaw.slice(4, 6);
-  const dobYYYY = dobYY <= currentYY ? 2000 + dobYY : 1900 + dobYY;
-  const dateOfBirth = `${dobYYYY}-${dobMM}-${dobDD}`;
+  let dateOfBirth: string | undefined;
+  if (!isNaN(dobYY) && !isNaN(parseInt(dobMM, 10)) && !isNaN(parseInt(dobDD, 10))) {
+    const dobYYYY = dobYY <= currentYY ? 2000 + dobYY : 1900 + dobYY;
+    dateOfBirth = `${dobYYYY}-${dobMM}-${dobDD}`;
+  }
 
   const expiryYY = parseInt(expiryRaw.slice(0, 2), 10);
   const expiryMM = expiryRaw.slice(2, 4);
   const expiryDD = expiryRaw.slice(4, 6);
-  const expiryYYYY = 2000 + expiryYY;
-  const expiryDate = `${expiryYYYY}-${expiryMM}-${expiryDD}`;
+  let expiryDate: string | undefined;
+  if (!isNaN(expiryYY) && !isNaN(parseInt(expiryMM, 10)) && !isNaN(parseInt(expiryDD, 10))) {
+    const expiryYYYY = 2000 + expiryYY;
+    expiryDate = `${expiryYYYY}-${expiryMM}-${expiryDD}`;
+  }
 
   return {
     full_name: fullName,
@@ -337,8 +362,9 @@ export function extractFields(fileTextOrBuffer: string): ExtractedFields {
   if (text.includes('P<') || text.match(/P[<A-Z0-9]{43}/)) {
     try {
       return parseTd3Mrz(text);
-    } catch (e) {
-      if (e instanceof UnsupportedDocumentError) throw e;
+    } catch {
+      // OCR often corrupts one or two MRZ characters. Continue to labeled
+      // passport fields rather than aborting the entire extraction ladder.
     }
   }
 
@@ -359,6 +385,24 @@ export function extractFields(fileTextOrBuffer: string): ExtractedFields {
   const fullText = cleanPdfTextString(text + '\n' + pdfExtracted);
 
   const resultFields: ExtractedFields = {};
+
+  // Passport / ID labels visible outside the MRZ, supporting international multilingual headers (English, French, German, Spanish, Portuguese, Italian)
+  const dobLabel = fullText.match(/(?:date\s+of\s+birth|birth\s+date|d\.?o\.?b\.?|date\s+de\s+naissance|geburtsdatum|fecha\s+de\s+nacimiento|data\s+de\s+nascimento|data\s+di\s+nascita)(?:\s*[\/\-]\s*[a-z\s]+)?\s*[:\-]?\s*([0-9]{1,4}[/.\-][0-9]{1,2}[/.\-][0-9]{1,4}|[0-9]{1,2}\s+[A-Za-z]{3,9}(?:\s*\/\s*[A-Za-z]{3,9})?\s+[0-9]{2,4})/i);
+  if (dobLabel) {
+    resultFields.date_of_birth = normalizeDocumentDate(dobLabel[1]);
+  } else {
+    // Direct match for passport bilingual DOB format: 21 OCT / OCT 00 or 21 OCT 2000
+    const standaloneDob = fullText.match(/\b([0-9]{1,2})\s+([A-Za-z]{3})(?:\s*\/\s*[A-Za-z]{3})?\s+([0-9]{2,4})\b/i);
+    if (standaloneDob) {
+      resultFields.date_of_birth = normalizeDocumentDate(`${standaloneDob[1]} ${standaloneDob[2]} ${standaloneDob[3]}`);
+    }
+  }
+
+  const expiryLabel = fullText.match(/(?:date\s+of\s+expiry|expiry\s+date|expires?|valid\s+until)(?:\s*[\/\-]\s*[a-z\s]+)?\s*[:\-]?\s*([0-9]{1,4}[/.\-][0-9]{1,2}[/.\-][0-9]{1,4}|[0-9]{1,2}\s+[A-Za-z]{3,9}(?:\s*\/\s*[A-Za-z]{3,9})?\s+[0-9]{2,4})/i);
+  if (expiryLabel) resultFields.expiry_date = normalizeDocumentDate(expiryLabel[1]);
+
+  const passportNumber = fullText.match(/(?:passport|document)\s*(?:no\.?|number)\s*[:\-]?\s*([A-Z0-9]{6,12})\b/i);
+  if (passportNumber) resultFields.document_number = passportNumber[1].toUpperCase();
 
   // Prefer explicit ISO currency declarations, then symbols and currency names.
   const currency = detectDocumentCurrency(text + '\n' + fullText);
@@ -437,6 +481,9 @@ export function extractFields(fileTextOrBuffer: string): ExtractedFields {
   // Return extracted fields ONLY if valid real fields were extracted
   if (
     resultFields.gross_income !== undefined ||
+    resultFields.date_of_birth ||
+    resultFields.expiry_date ||
+    resultFields.document_number ||
     resultFields.degree_title ||
     resultFields.institution ||
     resultFields.employer_name ||

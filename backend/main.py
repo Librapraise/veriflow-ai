@@ -7,7 +7,8 @@ import hashlib
 import time
 import os
 import secrets
-from typing import Optional, Dict
+import uuid
+from typing import Optional, Dict, List
 from fastapi import FastAPI, HTTPException, Header, Depends, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -73,6 +74,7 @@ API_KEYS_DB: Dict[str, dict] = {
 }
 
 VERIFICATIONS_DB: Dict[str, dict] = {}
+VERIFICATION_REQUESTS_DB: Dict[str, dict] = {}
 RATE_LIMIT_STORE: Dict[str, list] = {}
 
 def check_rate_limit(client_id: str, limit: int = 60, window_seconds: int = 60):
@@ -127,6 +129,25 @@ class VerifyResponse(BaseModel):
     signature: str
     attestation_id: str
     attestation_quote: dict
+
+class VerificationClaimRequest(BaseModel):
+    type: str = Field(..., example="degree_verified")
+    threshold: Optional[float] = None
+
+class CreateVerificationRequest(BaseModel):
+    subject_reference: str = Field(..., example="candidate_10482")
+    subject_email: Optional[str] = Field(None, example="candidate@example.com")
+    claims: List[VerificationClaimRequest]
+    allowed_document_types: List[str] = Field(default_factory=list)
+    expires_in: int = Field(86400, ge=300, le=604800)
+    callback_url: Optional[str] = None
+
+def api_org_from_key(raw_key: str) -> dict:
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    return API_KEYS_DB.get(key_hash, {
+        "org_id": "org_sandbox",
+        "org_name": "Sandbox Organization"
+    })
 
 def generate_signed_verification_response(claim: str, result: bool = True, subject: str = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F") -> VerifyResponse:
     ver_id = f"ver_{uuid.uuid4().hex[:10]}"
@@ -246,6 +267,51 @@ def execute_tee(req: ExecuteTeeRequest, api_key: str = Depends(verify_api_key)):
         result=True,
         subject=req.wallet_address
     )
+
+@app.post("/v1/verification-requests", status_code=201)
+def create_verification_request(req: CreateVerificationRequest, api_key: str = Depends(verify_api_key)):
+    org = api_org_from_key(api_key)
+    request_id = f"req_{uuid.uuid4().hex[:10]}"
+    candidate_token = secrets.token_urlsafe(24)
+    now = int(time.time())
+    frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+    record = {
+        "request_id": request_id,
+        "organization_id": org["org_id"],
+        "organization_name": org["org_name"],
+        "subject_reference": req.subject_reference,
+        "subject_email": req.subject_email,
+        "claims": [claim.dict() for claim in req.claims],
+        "allowed_document_types": req.allowed_document_types,
+        "status": "awaiting_subject",
+        "verification_url": f"{frontend_origin}/app/verify?request_id={request_id}&token={candidate_token}",
+        "callback_url": req.callback_url,
+        "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now)),
+        "expires_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now + req.expires_in)),
+        "candidate_token_hash": hashlib.sha256(candidate_token.encode()).hexdigest(),
+        "document_retained": False,
+    }
+    VERIFICATION_REQUESTS_DB[request_id] = record
+    return {key: value for key, value in record.items() if key != "candidate_token_hash"}
+
+@app.get("/v1/verification-requests")
+def list_verification_requests(api_key: str = Depends(verify_api_key)):
+    org = api_org_from_key(api_key)
+    return [
+        {key: value for key, value in record.items() if key != "candidate_token_hash"}
+        for record in VERIFICATION_REQUESTS_DB.values()
+        if record["organization_id"] == org["org_id"]
+    ]
+
+@app.get("/v1/verification-requests/{request_id}")
+def get_verification_request(request_id: str, api_key: str = Depends(verify_api_key)):
+    record = VERIFICATION_REQUESTS_DB.get(request_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Verification request not found")
+    org = api_org_from_key(api_key)
+    if record["organization_id"] != org["org_id"]:
+        raise HTTPException(status_code=403, detail="Verification request belongs to another organization")
+    return {key: value for key, value in record.items() if key != "candidate_token_hash"}
 
 @app.get("/v1/verifications/{verification_id}")
 @app.get("/verifications/{verification_id}")

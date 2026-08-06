@@ -55,6 +55,14 @@ const MagneticButton: React.FC<{
 
 export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAttestationModal }) => {
   const [openFaq, setOpenFaq] = useState<number>(0);
+  const [sandboxStage, setSandboxStage] = useState<'idle' | 'encrypting' | 'extracting' | 'attested' | 'verified'>('idle');
+
+  const runSandboxDemo = () => {
+    setSandboxStage('encrypting');
+    window.setTimeout(() => setSandboxStage('extracting'), 700);
+    window.setTimeout(() => setSandboxStage('attested'), 1500);
+    window.setTimeout(() => setSandboxStage('verified'), 2300);
+  };
 
   const faqItems: {
     alias: string;
@@ -236,6 +244,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
                   <span className="text-[10px] font-mono text-emerald-400 font-extrabold tracking-wider">TEE_CORE</span>
                 </motion.div>
               </div>
+
+              <button onClick={runSandboxDemo} disabled={sandboxStage !== 'idle' && sandboxStage !== 'verified'} className="w-full py-2 rounded-xl bg-gradient-to-r from-teal-400 to-cyan-500 text-slate-950 text-xs font-black z-10 disabled:opacity-70">
+                {sandboxStage === 'idle' ? 'Simulate Verification' : sandboxStage === 'encrypting' ? 'Encrypting locally…' : sandboxStage === 'extracting' ? 'TEE extracting claim…' : sandboxStage === 'attested' ? 'Attestation quote verified…' : '✓ age_above_18 VERIFIED'}
+              </button>
+
+              {sandboxStage === 'verified' && <div className="w-full px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[10px] text-emerald-300 font-mono z-10">Flare attestation ready · raw document sanitized</div>}
 
               {/* Enclave Quote Measurement Footer */}
               <div className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 z-10 space-y-1">

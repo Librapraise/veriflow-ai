@@ -9,7 +9,11 @@ import type {
   Organization, 
   ApiLog, 
   UserSession,
-  ClaimType 
+  ClaimType,
+  DocumentType,
+  OrganizationPersona,
+  VerificationRequest,
+  VerificationRequestStatus,
 } from '../types/veriflow';
 import { executeConfidentialComputeJob } from './enclaveSimulator';
 
@@ -18,7 +22,8 @@ const STORAGE_KEYS = {
   DOCUMENTS: 'veriflow_documents',
   VERIFICATIONS: 'veriflow_verifications',
   ORGS: 'veriflow_organizations',
-  LOGS: 'veriflow_api_logs'
+  LOGS: 'veriflow_api_logs',
+  REQUESTS: 'veriflow_verification_requests'
 };
 
 // Default initial session (Disconnected state so Connect Wallet button displays prominently)
@@ -189,6 +194,86 @@ export class VeriFlowStore {
 
   static getApiLogs(): ApiLog[] {
     return getStored(STORAGE_KEYS.LOGS, DEFAULT_LOGS);
+  }
+
+  static getVerificationRequests(): VerificationRequest[] {
+    return getStored(STORAGE_KEYS.REQUESTS, []);
+  }
+
+  static createVerificationRequest(params: {
+    organization: Organization;
+    persona: OrganizationPersona;
+    subjectReference: string;
+    subjectEmail?: string;
+    claims: ClaimType[];
+    allowedDocumentTypes: DocumentType[];
+    callbackUrl?: string;
+    expiresInHours?: number;
+  }): VerificationRequest {
+    const id = 'req_' + Math.random().toString(36).substring(2, 10);
+    const createdAt = new Date();
+    const expiresAt = new Date(createdAt.getTime() + (params.expiresInHours || 24) * 60 * 60 * 1000);
+    const verificationUrl = `${window.location.origin}/app/verify?request_id=${id}`;
+    const request: VerificationRequest = {
+      id,
+      organizationId: params.organization.id,
+      organizationName: params.organization.name,
+      persona: params.persona,
+      subjectReference: params.subjectReference,
+      subjectEmail: params.subjectEmail || undefined,
+      claims: params.claims,
+      allowedDocumentTypes: params.allowedDocumentTypes,
+      status: 'awaiting_subject',
+      verificationUrl,
+      callbackUrl: params.callbackUrl || params.organization.webhookUrl,
+      createdAt: createdAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+    };
+    setStored(STORAGE_KEYS.REQUESTS, [request, ...this.getVerificationRequests()]);
+    this.logApiCall(params.organization.id, params.organization.name, id, '/v1/verification-requests', 201);
+    return request;
+  }
+
+  static updateVerificationRequestStatus(
+    id: string,
+    status: VerificationRequestStatus,
+    verificationId?: string,
+  ): void {
+    const requests = this.getVerificationRequests().map(request =>
+      request.id === id ? { ...request, status, verificationId: verificationId || request.verificationId } : request,
+    );
+    setStored(STORAGE_KEYS.REQUESTS, requests);
+  }
+
+  static recordVerificationRequestConsent(id: string): void {
+    const requests = this.getVerificationRequests().map(request =>
+      request.id === id ? { ...request, consentedAt: new Date().toISOString() } : request,
+    );
+    setStored(STORAGE_KEYS.REQUESTS, requests);
+  }
+
+  static recordVerificationRequestResult(
+    requestId: string,
+    report: VerificationReport,
+  ): void {
+    const requests = this.getVerificationRequests().map(request => {
+      if (request.id !== requestId) return request;
+      const previous = request.claimResults || [];
+      const claimResults = [
+        ...previous.filter(item => item.claim !== report.type),
+        { claim: report.type, result: report.result, status: report.verificationStatus, verificationId: report.id },
+      ];
+      const allClaimsComplete = request.claims.every(claim => claimResults.some(item => item.claim === claim));
+      const overallStatus = !allClaimsComplete
+        ? 'processing'
+        : claimResults.some(item => item.status === 'UNVERIFIABLE')
+        ? 'unverifiable'
+        : claimResults.every(item => item.result)
+        ? 'verified'
+        : 'denied';
+      return { ...request, claimResults, status: overallStatus as VerificationRequest['status'], verificationId: report.id };
+    });
+    setStored(STORAGE_KEYS.REQUESTS, requests);
   }
 
   static logApiCall(orgId: string, orgName: string, verificationId: string, endpoint: string, statusCode: number = 200): void {

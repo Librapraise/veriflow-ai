@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   UploadCloud, 
   FileCheck, 
@@ -20,7 +20,7 @@ import {
   Terminal,
   Loader2
 } from 'lucide-react';
-import type { DocumentType, ClaimType, VerificationReport } from '../types/veriflow';
+import type { DocumentType, ClaimType, VerificationReport, VerificationRequest } from '../types/veriflow';
 import { encryptDocumentClientSide } from '../lib/crypto';
 import { executeConfidentialComputeJob, type EnclaveExecutionProgress } from '../lib/enclaveSimulator';
 import { VeriFlowStore } from '../lib/apiStore';
@@ -32,13 +32,15 @@ interface DocumentUploadProps {
   onVerificationComplete?: (report: VerificationReport) => void;
   onOpenAttestationModal: () => void;
   simulatedFailAttestation: boolean;
+  requestId?: string;
 }
 
 export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   setUserSession,
   onVerificationComplete,
   onOpenAttestationModal,
-  simulatedFailAttestation
+  simulatedFailAttestation,
+  requestId,
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState<DocumentType>('passport');
@@ -52,6 +54,17 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [isAnchoring, setIsAnchoring] = useState<boolean>(false);
   const [anchorError, setAnchorError] = useState<string | null>(null);
+  const [hasConsented, setHasConsented] = useState(false);
+  const candidateRequest: VerificationRequest | undefined = requestId
+    ? VeriFlowStore.getVerificationRequests().find(request => request.id === requestId)
+    : undefined;
+
+  useEffect(() => {
+    if (!candidateRequest) return;
+    setHasConsented(Boolean(candidateRequest.consentedAt));
+    setClaimType(candidateRequest.claims[0] || 'age_above_18');
+    setDocumentType(candidateRequest.allowedDocumentTypes[0] || 'passport');
+  }, [candidateRequest?.id]);
 
   // Default sample file generator for instant one-click testing
   const handleUseSamplePassport = () => {
@@ -83,6 +96,14 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     if (!file) {
       setErrorState('Please select or drag a document file to begin verification.');
       return;
+    }
+    if (candidateRequest && !hasConsented) {
+      setErrorState('Please review and accept the consent notice before uploading.');
+      return;
+    }
+
+    if (candidateRequest) {
+      VeriFlowStore.updateVerificationRequestStatus(candidateRequest.id, 'processing');
     }
 
     setIsProcessing(true);
@@ -140,6 +161,10 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         }
       );
 
+      if (candidateRequest) {
+        VeriFlowStore.recordVerificationRequestResult(candidateRequest.id, report);
+      }
+
       setIsAnchoring(true);
       setExecutionSteps(prev => [...prev, {
         step: 'ANCHOR_ON_CHAIN',
@@ -170,6 +195,9 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
     } catch (err: any) {
       console.error('Verification error:', err);
+      if (candidateRequest) {
+        VeriFlowStore.updateVerificationRequestStatus(candidateRequest.id, 'awaiting_subject');
+      }
       setErrorState(err.message || 'Verification failed. Attestation rejected by KMS.');
     } finally {
       setIsAnchoring(false);
@@ -231,6 +259,16 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
       </div>
 
       {/* Main Workspace Layout */}
+      {candidateRequest && (
+        <div className="p-5 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 space-y-3">
+          <div className="flex items-center gap-2 text-indigo-200 font-bold text-sm"><ShieldCheck className="w-4 h-4" /> Secure verification request from {candidateRequest.organizationName}</div>
+          <p className="text-xs text-slate-300">Reference: <span className="font-mono">{candidateRequest.subjectReference}</span>. This request checks: <span className="font-semibold">{candidateRequest.claims.join(', ')}</span>.</p>
+          <p className="text-[11px] text-slate-400">Your document is encrypted before processing. The requesting organization receives only the claim result and cryptographic proof.</p>
+          <label className="flex items-start gap-2 text-xs text-slate-300"><input type="checkbox" checked={hasConsented} onChange={event => { setHasConsented(event.target.checked); if (event.target.checked) VeriFlowStore.recordVerificationRequestConsent(candidateRequest.id); }} className="mt-0.5 accent-teal-500" />I consent to VeriFlow processing this document for the claims listed above. I understand the raw document is not shared with the requester.</label>
+          <div className="text-[11px] text-slate-500">Request expires {new Date(candidateRequest.expiresAt).toLocaleString()}</div>
+        </div>
+      )}
+
       {!completedReport ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
@@ -270,7 +308,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                   { id: 'resume', label: 'Resume', icon: FileText },
                   { id: 'bank_statement', label: 'Bank Statement', icon: FileText },
                   { id: 'drivers_license', label: 'Driver\'s License', icon: ShieldCheck },
-                ].map((item) => {
+                ].filter(item => !candidateRequest || candidateRequest.allowedDocumentTypes.includes(item.id as DocumentType)).map((item) => {
                   const Icon = item.icon;
                   const isSelected = documentType === item.id;
                   return (
@@ -393,7 +431,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                   { id: 'income_above_threshold', label: 'Income Above Threshold', desc: 'Checks gross income/balance exceeds threshold without revealing exact salary.' },
                   { id: 'degree_verified', label: 'Degree & University Verification', desc: 'Validates degree title and institution credentials.' },
                   { id: 'currently_employed', label: 'Current Employment Status', desc: 'Confirms active role tenure at employer.' },
-                ].map((rule) => {
+                ].filter(rule => !candidateRequest || candidateRequest.claims.includes(rule.id as ClaimType)).map((rule) => {
                   const isSelected = claimType === rule.id;
                   return (
                     <div
@@ -486,21 +524,18 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
               {/* Execution Steps Stepper */}
               <div className="space-y-3">
                 {[
-                  { title: 'Client AES-256 Encryption', detail: 'Plaintext encrypted in browser WebCrypto' },
-                  { title: 'TEE Quote Generation', detail: 'Enclave generates hardware attestation quote Q_att' },
-                  { title: 'KMS Fail-Closed Verification', detail: 'KMS checks quote measurement against allow-list' },
-                  { title: 'In-Memory RAM Decryption', detail: 'Decrypted into hardware-protected RAM only' },
-                  { title: 'AI Schema Extraction', detail: 'OCR reads only required field internally' },
-                  { title: 'RAM Zeroing & Memory Purge', detail: 'Plaintext & PII wiped from enclave RAM' },
-                  { title: 'Enclave Result Signing', detail: 'Signed with SK_enclave & emitted to verifier' },
-                  { title: 'Flare Transaction Approval', detail: 'Approve the registry transaction in MetaMask' }
+                  { title: 'Client-Side Encryption', detail: 'AES-256-GCM seals the document before confidential execution', doneOn: ['DECRYPT_IN_RAM', 'OCR_EXTRACTION', 'RULE_EVAL', 'WIPE_RAM', 'SIGN_RESULT', 'ANCHOR_ON_CHAIN', 'COMPLETE'] },
+                  { title: 'Confidential Compute Processing', detail: 'TEE decrypts in protected RAM, extracts only required fields, then sanitizes plaintext', doneOn: ['WIPE_RAM', 'SIGN_RESULT', 'ANCHOR_ON_CHAIN', 'COMPLETE'] },
+                  { title: 'ZK Proof & Attestation', detail: 'TEE signs the minimal claim and emits a verified attestation quote', doneOn: ['SIGN_RESULT', 'ANCHOR_ON_CHAIN', 'COMPLETE'] },
+                  { title: 'Flare Registry Settlement', detail: 'MetaMask approves settlement to VeriFlowRegistryV2 on Coston2', doneOn: [] }
                 ].map((step, idx) => {
-                  const isAnchorStep = idx === 7;
+                  const isAnchorStep = idx === 3;
                   const anchorConfirmed = executionSteps.some(
                     progress => progress.step === 'ANCHOR_ON_CHAIN' && progress.message.startsWith('Transaction confirmed:'),
                   );
-                  const isDone = isAnchorStep ? anchorConfirmed : executionSteps.length > idx;
-                  const isCurrent = isAnchorStep ? isAnchoring : executionSteps.length === idx && isProcessing;
+                  const isDone = isAnchorStep ? anchorConfirmed : executionSteps.some(progress => step.doneOn.includes(progress.step));
+                  const previousDone = idx === 0 || executionSteps.some(progress => idx === 1 ? progress.step === 'DECRYPT_IN_RAM' : progress.step === 'WIPE_RAM');
+                  const isCurrent = isAnchorStep ? isAnchoring : isProcessing && previousDone && !isDone;
 
                   return (
                     <div 
@@ -532,6 +567,11 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                     </div>
                   );
                 })}
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-cyan-500/5 border border-cyan-500/20 flex items-start gap-3">
+                <EyeOff className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                <div><div className="text-xs font-black text-cyan-300">Zero-Knowledge Data Sanitization</div><p className="text-[11px] text-slate-400 mt-1">Raw bytes are decrypted only inside protected memory, reduced to claim-specific facts, and purged before signing. The server and Flare registry receive no source document.</p></div>
               </div>
 
               {/* Data Minimization Guarantee Callout */}

@@ -194,6 +194,36 @@ export interface Organization {
   createdAt: string;
 }
 
+export type OrganizationPersona = 'hr' | 'fintech' | 'web3' | 'marketplace';
+export type VerificationRequestStatus =
+  | 'awaiting_subject'
+  | 'document_submitted'
+  | 'processing'
+  | 'verified'
+  | 'denied'
+  | 'unverifiable'
+  | 'expired'
+  | 'revoked';
+
+export interface VerificationRequest {
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  persona: OrganizationPersona;
+  subjectReference: string;
+  subjectEmail?: string;
+  claims: ClaimType[];
+  allowedDocumentTypes: DocumentType[];
+  status: VerificationRequestStatus;
+  verificationUrl: string;
+  callbackUrl?: string;
+  createdAt: string;
+  expiresAt: string;
+  verificationId?: string;
+  claimResults?: Array<{ claim: ClaimType; result: boolean; status: 'VERIFIED' | 'DENIED' | 'UNVERIFIABLE'; verificationId: string }>;
+  consentedAt?: string;
+}
+
 export interface ApiLog {
   id: string;
   organizationId: string;
