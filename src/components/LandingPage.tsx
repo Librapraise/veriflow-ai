@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import { motion, useMotionValue, useSpring, AnimatePresence } from 'framer-motion';
-import { 
-  ShieldCheck, 
-  Lock, 
-  Cpu, 
-  Key, 
+import {
+  ShieldCheck,
+  Lock,
+  Cpu,
+  Key,
   ChevronRight,
   Fingerprint,
   Terminal,
-  ChevronDown
+  ChevronDown,
+  BadgeCheck,
+  DatabaseZap,
+  Network,
+  ScanLine
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -70,37 +74,37 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
     answer: React.ReactNode;
     accent: 'teal' | 'emerald' | 'cyan';
   }[] = [
-    {
-      alias: '--privacy-model',
-      question: 'How does VeriFlow AI protect document privacy?',
-      accent: 'teal',
-      answer: (
-        <>
-          Documents are encrypted in your browser with AES-256-GCM before transmission. They are decrypted exclusively inside TEE enclave RAM, processed to evaluate the requested boolean rule, and immediately zeroed out in RAM. Raw PII is never saved to disk or database.
-        </>
-      )
-    },
-    {
-      alias: '--proof-verify',
-      question: 'How do third parties verify attestation proofs?',
-      accent: 'emerald',
-      answer: (
-        <>
-          Every attestation contains a 165-byte canonical payload signed with secp256k1 ECDSA. Third parties can verify the signature on-chain via our <code className="text-emerald-300 font-mono">VeriFlowRegistryV2.sol</code> contract on Coston2 or off-chain using our standalone Public Verifier page.
-        </>
-      )
-    },
-    {
-      alias: '--failure-states',
-      question: 'What happens if a document fails check digits or rule thresholds?',
-      accent: 'cyan',
-      answer: (
-        <>
-          VeriFlow AI returns honest 3-state outcomes (<code className="text-emerald-300 font-mono">VERIFIED</code>, <code className="text-rose-300 font-mono">DENIED</code>, or <code className="text-amber-300 font-mono">UNVERIFIABLE</code>). For example, a 17-year-old passport produces an authenticated <code className="text-rose-300 font-mono">DENIED (FALSE)</code> proof, demonstrating the platform does not rubber-stamp results.
-        </>
-      )
-    }
-  ];
+      {
+        alias: '--privacy-model',
+        question: 'How does VeriFlow AI protect document privacy?',
+        accent: 'teal',
+        answer: (
+          <>
+            Documents are encrypted in your browser with AES-256-GCM before transmission. They are decrypted exclusively inside TEE enclave RAM, processed to evaluate the requested boolean rule, and immediately zeroed out in RAM. Raw PII is never saved to disk or database.
+          </>
+        )
+      },
+      {
+        alias: '--proof-verify',
+        question: 'How do third parties verify attestation proofs?',
+        accent: 'emerald',
+        answer: (
+          <>
+            Every attestation contains a 165-byte canonical payload signed with secp256k1 ECDSA. Third parties can verify the signature on-chain via our <code className="text-emerald-300 font-mono">VeriFlowRegistryV2.sol</code> contract on Coston2 or off-chain using our standalone Public Verifier page.
+          </>
+        )
+      },
+      {
+        alias: '--failure-states',
+        question: 'What happens if a document fails check digits or rule thresholds?',
+        accent: 'cyan',
+        answer: (
+          <>
+            VeriFlow AI returns honest 3-state outcomes (<code className="text-emerald-300 font-mono">VERIFIED</code>, <code className="text-rose-300 font-mono">DENIED</code>, or <code className="text-amber-300 font-mono">UNVERIFIABLE</code>). For example, a 17-year-old passport produces an authenticated <code className="text-rose-300 font-mono">DENIED (FALSE)</code> proof, demonstrating the platform does not rubber-stamp results.
+          </>
+        )
+      }
+    ];
 
   const accentStyles = {
     teal: {
@@ -123,27 +127,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
     }
   };
   return (
-    <div className="space-y-24 pb-20 max-w-6xl mx-auto px-4">
-      
+    <div className="space-y-32 pb-24 max-w-7xl mx-auto px-4 sm:px-6">
+
       {/* ── HERO SECTION ── */}
-      <section className="relative pt-8 pb-16 overflow-hidden text-left">
+      <section className="relative min-h-[calc(100vh-4rem)] py-16 lg:py-24 overflow-hidden text-left flex items-center">
         {/* Subtle Node Constellation / Mesh Network Background */}
         <div className="absolute inset-0 pointer-events-none -z-10 overflow-hidden">
-          <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-gradient-to-b from-teal-500/15 via-emerald-500/5 to-transparent rounded-full blur-[140px]" />
+          <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[1100px] h-[700px] bg-gradient-to-b from-teal-500/20 via-cyan-500/5 to-transparent rounded-full blur-[150px]" />
+          <div className="absolute top-1/3 right-0 w-96 h-96 rounded-full bg-cyan-500/10 blur-[130px]" />
           <div className="absolute inset-0 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:32px_32px] opacity-20" />
         </div>
 
-        <div className="grid lg:grid-cols-12 gap-12 items-center">
-          
+        <div className="grid lg:grid-cols-12 gap-12 xl:gap-20 items-center w-full">
+
           {/* Left Hero Content */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: 'easeOut' }}
-            className="lg:col-span-7 space-y-6"
+            className="lg:col-span-7 space-y-7"
           >
             {/* Top Pill Badge */}
-            <div 
+            <div
               onClick={onOpenAttestationModal}
               className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 text-xs font-medium text-slate-300 shadow-md cursor-pointer hover:border-teal-500/30 transition-colors"
             >
@@ -154,14 +159,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
               </span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.1]">
-              Verify Facts. <br />
+            <div className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.24em] font-black text-cyan-300"><BadgeCheck className="w-4 h-4" /> Privacy-preserving identity infrastructure</div>
+
+            <h1 className="text-5xl sm:text-6xl lg:text-6xl xl:text-[5.25rem] font-black text-white tracking-[-0.055em] leading-[0.98]">
+              Verify the truth. <br />
               <span className="bg-gradient-to-r from-teal-300 via-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-                Not Documents.
+                Reveal nothing else.
               </span>
             </h1>
 
-            <p className="text-sm sm:text-base text-slate-300 max-w-lg leading-relaxed font-normal">
+            <p className="text-base sm:text-lg text-slate-300 max-w-2xl leading-relaxed font-normal">
               Upload sensitive documents once into an attested Confidential Execution Environment. VeriFlow AI returns a cryptographically signed proof — <strong>never the underlying document or raw PII</strong>.
             </p>
 
@@ -171,7 +178,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
                 className="group flex items-center gap-2 px-7 py-3.5 bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-400 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-extrabold rounded-xl shadow-lg shadow-teal-500/20 transition-all text-sm cursor-pointer active:scale-95"
               >
                 <ShieldCheck size={18} className="stroke-[2.5]" />
-                <span>Verify Passport Age (18+)</span>
+                <span>Launch Confidential Verification</span>
                 <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </MagneticButton>
 
@@ -180,12 +187,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
                 className="px-6 py-3.5 bg-slate-900/90 border border-slate-800 rounded-xl hover:bg-slate-800/80 transition-colors font-bold text-sm text-slate-200 flex items-center space-x-2 cursor-pointer"
               >
                 <Key className="w-4 h-4 text-purple-400" />
-                <span>Developer API Portal</span>
+                <span>Explore Enterprise API</span>
               </button>
             </div>
 
             {/* Micro Stats Bar */}
-            <div className="pt-6 border-t border-slate-800/80 grid grid-cols-3 gap-4 font-mono text-left">
+            <div className="pt-6 border-t border-slate-800/80 grid grid-cols-3 gap-4 font-mono text-left max-w-2xl">
               <div>
                 <div className="text-lg sm:text-xl font-black text-white">256-bit</div>
                 <div className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5 font-sans">Client AES-GCM</div>
@@ -209,55 +216,63 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
             className="lg:col-span-5 flex justify-center items-center relative py-6"
           >
             {/* Main Holographic Enclave Visual Component */}
-            <div className="relative w-80 h-96 bg-gradient-to-b from-slate-900/80 to-slate-950/90 backdrop-blur-2xl border border-slate-800 rounded-[36px] shadow-2xl p-6 flex flex-col items-center justify-between overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-tr from-teal-500/10 via-emerald-500/5 to-transparent pointer-events-none" />
-              
-              {/* Status Header */}
-              <div className="w-full flex items-center justify-between text-[11px] font-mono text-slate-400 border-b border-slate-800/80 pb-3 z-10">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  ENCLAVE_READY
-                </span>
-                <span className="text-teal-400 font-bold">COSTON2</span>
-              </div>
+            <div className="absolute -inset-12 rounded-full bg-teal-500/10 blur-[90px]" />
 
-              {/* Glowing Orb Centerpiece */}
-              <div className="relative my-auto flex items-center justify-center">
-                <motion.div 
-                  animate={{ 
-                    rotate: 360,
-                    scale: [1, 1.04, 1]
-                  }}
-                  transition={{ 
-                    rotate: { duration: 25, repeat: Infinity, ease: 'linear' },
-                    scale: { duration: 4, repeat: Infinity, ease: 'easeInOut' }
-                  }}
-                  className="w-40 h-40 rounded-full bg-gradient-to-br from-teal-400/20 via-emerald-500/30 to-cyan-500/20 border border-teal-400/40 blur-sm absolute"
-                />
-                
-                <motion.div
-                  animate={{ y: [0, -6, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                  className="w-32 h-32 rounded-3xl bg-slate-950/90 border border-teal-500/40 shadow-2xl shadow-teal-500/30 flex flex-col items-center justify-center relative z-10 space-y-2 backdrop-blur-xl"
-                >
-                  <Cpu size={36} className="text-teal-300 animate-pulse" />
-                  <span className="text-[10px] font-mono text-emerald-400 font-extrabold tracking-wider">TEE_CORE</span>
-                </motion.div>
-              </div>
+            <div className="relative w-full max-w-[390px] mx-auto">
+              {/* Floating Status Badges - Pinned to Card relative boundaries */}
+              <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 5, repeat: Infinity }} className="absolute -left-2 top-14 z-30 px-2.5 py-1.5 rounded-xl bg-slate-900/95 border border-cyan-500/40 shadow-2xl text-[10px] font-mono text-cyan-300 backdrop-blur-md flex items-center gap-1.5"><ScanLine className="w-3 h-3" />PII IN · ENCRYPTED</motion.div>
+              <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 5, repeat: Infinity, delay: 1 }} className="absolute -right-2 bottom-28 z-30 px-2.5 py-1.5 rounded-xl bg-slate-900/95 border border-emerald-500/40 shadow-2xl text-[10px] font-mono text-emerald-300 backdrop-blur-md flex items-center gap-1.5"><BadgeCheck className="w-3 h-3" />CLAIM OUT · VERIFIED</motion.div>
 
-              <button onClick={runSandboxDemo} disabled={sandboxStage !== 'idle' && sandboxStage !== 'verified'} className="w-full py-2 rounded-xl bg-gradient-to-r from-teal-400 to-cyan-500 text-slate-950 text-xs font-black z-10 disabled:opacity-70">
-                {sandboxStage === 'idle' ? 'Simulate Verification' : sandboxStage === 'encrypting' ? 'Encrypting locally…' : sandboxStage === 'extracting' ? 'TEE extracting claim…' : sandboxStage === 'attested' ? 'Attestation quote verified…' : '✓ age_above_18 VERIFIED'}
-              </button>
+              <div className="relative w-full h-[500px] bg-gradient-to-b from-slate-900/85 to-slate-950/95 backdrop-blur-2xl border border-slate-700/70 rounded-[40px] shadow-[0_35px_100px_-25px_rgba(20,184,166,0.35)] p-6 flex flex-col items-center justify-between overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-tr from-teal-500/10 via-emerald-500/5 to-transparent pointer-events-none" />
 
-              {sandboxStage === 'verified' && <div className="w-full px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[10px] text-emerald-300 font-mono z-10">Flare attestation ready · raw document sanitized</div>}
-
-              {/* Enclave Quote Measurement Footer */}
-              <div className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 z-10 space-y-1">
-                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
-                  <span>M_CODE HASH</span>
-                  <span className="text-emerald-400 font-bold">MATCHED</span>
+                {/* Status Header */}
+                <div className="w-full flex items-center justify-between text-[11px] font-mono text-slate-400 border-b border-slate-800/80 pb-3 z-10">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    ENCLAVE_READY
+                  </span>
+                  <span className="text-teal-400 font-bold">COSTON2</span>
                 </div>
-                <div className="text-[11px] font-mono text-teal-300 truncate">0xd84e5aba91f42c7e8a3b...</div>
+
+                {/* Glowing Orb Centerpiece */}
+                <div className="relative my-auto flex items-center justify-center">
+                  <motion.div
+                    animate={{
+                      rotate: 360,
+                      scale: [1, 1.04, 1]
+                    }}
+                    transition={{
+                      rotate: { duration: 25, repeat: Infinity, ease: 'linear' },
+                      scale: { duration: 4, repeat: Infinity, ease: 'easeInOut' }
+                    }}
+                    className="w-56 h-56 rounded-full bg-gradient-to-br from-teal-400/20 via-emerald-500/30 to-cyan-500/20 border border-teal-400/40 blur-sm absolute"
+                  />
+
+                  <motion.div
+                    animate={{ y: [0, -6, 0] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                    className="w-40 h-40 rounded-[36px] bg-slate-950/90 border border-teal-500/50 shadow-2xl shadow-teal-500/30 flex flex-col items-center justify-center relative z-10 space-y-2 backdrop-blur-xl"
+                  >
+                    <Cpu size={36} className="text-teal-300 animate-pulse" />
+                    <span className="text-[10px] font-mono text-emerald-400 font-extrabold tracking-wider">TEE_CORE</span>
+                  </motion.div>
+                </div>
+
+                <button onClick={runSandboxDemo} disabled={sandboxStage !== 'idle' && sandboxStage !== 'verified'} className="w-full py-2 rounded-xl bg-gradient-to-r from-teal-400 to-cyan-500 text-slate-950 text-xs font-black z-10 disabled:opacity-70">
+                  {sandboxStage === 'idle' ? 'Simulate Verification' : sandboxStage === 'encrypting' ? 'Encrypting locally…' : sandboxStage === 'extracting' ? 'TEE extracting claim…' : sandboxStage === 'attested' ? 'Attestation quote verified…' : '✓ age_above_18 VERIFIED'}
+                </button>
+
+                {sandboxStage === 'verified' && <div className="w-full px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[10px] text-emerald-300 font-mono z-10">Flare attestation ready · raw document sanitized</div>}
+
+                {/* Enclave Quote Measurement Footer */}
+                <div className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 z-10 space-y-1">
+                  <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                    <span>M_CODE HASH</span>
+                    <span className="text-emerald-400 font-bold">MATCHED</span>
+                  </div>
+                  <div className="text-[11px] font-mono text-teal-300 truncate">0xd84e5aba91f42c7e8a3b...</div>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -267,7 +282,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
 
 
       {/* ── SECTION 2: CENTERED HEADER + 3 ROUNDED FEATURE CARDS ── */}
-      <motion.section 
+      <section className="-mt-20 relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3 p-3 rounded-2xl bg-slate-900/65 backdrop-blur-xl border border-slate-800/80 shadow-2xl">
+        {[{ icon: Cpu, label: 'Confidential compute', value: 'TEE isolated' }, { icon: DatabaseZap, label: 'Data retention', value: 'Raw PII: zero' }, { icon: Network, label: 'Settlement', value: 'Flare Coston2' }, { icon: BadgeCheck, label: 'Proof standard', value: 'ECDSA EIP-191' }].map(item => <div key={item.label} className="p-4 rounded-xl border border-slate-800/70 bg-slate-950/50"><item.icon className="w-4 h-4 text-teal-400" /><div className="text-[10px] text-slate-500 uppercase tracking-wider mt-3">{item.label}</div><div className="text-xs font-black text-slate-200 mt-1">{item.value}</div></div>)}
+      </section>
+
+      <motion.section
         initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-50px' }}
@@ -289,8 +308,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
 
         {/* 3 Main Feature Cards (matching reference card style) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
-          <motion.div 
+
+          <motion.div
             whileHover={{ y: -6 }}
             className="p-8 rounded-[32px] bg-slate-900/80 border border-slate-800 space-y-6 flex flex-col justify-between hover:border-teal-500/40 transition-all shadow-xl text-left"
           >
@@ -306,7 +325,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
             </div>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             whileHover={{ y: -6 }}
             className="p-8 rounded-[32px] bg-slate-900/80 border border-slate-800 space-y-6 flex flex-col justify-between hover:border-emerald-500/40 transition-all shadow-xl text-left"
           >
@@ -322,7 +341,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
             </div>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             whileHover={{ y: -6 }}
             className="p-8 rounded-[32px] bg-slate-900/80 border border-slate-800 space-y-6 flex flex-col justify-between hover:border-cyan-500/40 transition-all shadow-xl text-left"
           >
@@ -343,7 +362,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
 
 
       {/* ── SECTION 3: FEATURE SHOWCASE BANNER ── */}
-      <motion.section 
+      <motion.section
         initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-50px' }}
@@ -351,7 +370,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
         className="p-8 sm:p-12 rounded-[36px] bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 shadow-2xl relative overflow-hidden text-left"
       >
         <div className="grid lg:grid-cols-12 gap-8 items-center">
-          
+
           {/* Left Media Core */}
           <div className="lg:col-span-5 flex justify-center">
             <div className="w-64 h-64 sm:w-72 sm:h-72 rounded-[32px] bg-slate-950 border border-slate-800 p-6 flex flex-col items-center justify-center relative shadow-inner">
@@ -388,7 +407,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
       </motion.section>
 
       {/* ── FAQ SECTION: TERMINAL QUERY CONSOLE ── */}
-      <motion.section 
+      <motion.section
         initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-50px' }}
@@ -405,8 +424,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-          <motion.div 
+
+          <motion.div
             whileHover={{ y: -4 }}
             className="p-8 rounded-[32px] bg-slate-900/90 border border-slate-800 space-y-4 hover:border-teal-500/40 transition-colors shadow-xl"
           >
@@ -414,7 +433,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
             <p className="text-xs text-slate-400 leading-relaxed">
               Verify users are 18+ or 21+ using official government passports or driver's licenses without holding user identity scans or storing PII on centralized servers.
             </p>
-            <button 
+            <button
               onClick={() => setActiveTab('verify')}
               className="px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-teal-300 font-bold text-xs hover:bg-slate-800 transition-colors"
             >
@@ -422,7 +441,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
             </button>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             whileHover={{ y: -4 }}
             className="p-8 rounded-[32px] bg-slate-900/90 border border-slate-800 space-y-4 hover:border-purple-500/40 transition-colors shadow-xl"
           >
@@ -430,7 +449,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
             <p className="text-xs text-slate-400 leading-relaxed">
               Attest university degrees, employment history, or professional certifications to grant weighted DAO voting power while protecting contributor identities.
             </p>
-            <button 
+            <button
               onClick={() => setActiveTab('verify')}
               className="px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-purple-300 font-bold text-xs hover:bg-slate-800 transition-colors"
             >
@@ -438,7 +457,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
             </button>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             whileHover={{ y: -4 }}
             className="p-8 rounded-[32px] bg-slate-900/90 border border-slate-800 space-y-4 hover:border-emerald-500/40 transition-colors shadow-xl"
           >
@@ -446,7 +465,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
             <p className="text-xs text-slate-400 leading-relaxed">
               Prove gross monthly income $\ge \$5,000$ or liquid bank balances directly from bank statements or payslips without revealing account numbers or full salary figures.
             </p>
-            <button 
+            <button
               onClick={() => setActiveTab('verify')}
               className="px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-emerald-300 font-bold text-xs hover:bg-slate-800 transition-colors"
             >
@@ -454,7 +473,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
             </button>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             whileHover={{ y: -4 }}
             className="p-8 rounded-[32px] bg-slate-900/90 border border-slate-800 space-y-4 hover:border-cyan-500/40 transition-colors shadow-xl"
           >
@@ -462,7 +481,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
             <p className="text-xs text-slate-400 leading-relaxed">
               Integrate privacy verification into any React app or Python service in 3 lines of code using our FastAPI gateway with SHA-256 API key authentication and rate limiting.
             </p>
-            <button 
+            <button
               onClick={() => setActiveTab('developer')}
               className="px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-cyan-300 font-bold text-xs hover:bg-slate-800 transition-colors"
             >
@@ -475,7 +494,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
 
 
       {/* ── SECTION 5: INTERCONNECTED CRYPTOGRAPHIC TIMELINE PIPELINE ── */}
-      <motion.section 
+      <motion.section
         initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-50px' }}
@@ -497,26 +516,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
 
         {/* Futuristic Laser Node Pipeline Container */}
         <div className="relative pt-6">
-          
+
           {/* Horizontal Connecting Glow Line (Desktop) */}
           <div className="hidden lg:block absolute top-[68px] left-[10%] right-[10%] h-0.5 bg-gradient-to-r from-teal-500/30 via-emerald-500/50 to-purple-500/30 z-0">
-            <motion.div 
-              animate={{ x: ['0%', '100%'] }} 
+            <motion.div
+              animate={{ x: ['0%', '100%'] }}
               transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-              className="h-full w-24 bg-gradient-to-r from-transparent via-cyan-400 to-transparent blur-[1px]" 
+              className="h-full w-24 bg-gradient-to-r from-transparent via-cyan-400 to-transparent blur-[1px]"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left relative z-10">
-            
+
             {/* Step 1 Node */}
-            <motion.div 
+            <motion.div
               whileHover={{ y: -8, scale: 1.02 }}
               transition={{ duration: 0.2 }}
               className="group p-6 rounded-[28px] bg-slate-900/80 backdrop-blur-xl border border-slate-800 hover:border-teal-500/50 transition-all shadow-2xl flex flex-col justify-between space-y-6 relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-teal-500/5 rounded-full blur-2xl group-hover:bg-teal-500/15 transition-colors" />
-              
+
               <div className="flex items-center justify-between">
                 <div className="w-11 h-11 rounded-2xl bg-slate-950 border border-teal-500/30 flex items-center justify-center font-mono font-black text-teal-400 text-sm shadow-inner group-hover:shadow-[0_0_15px_rgba(45,212,191,0.3)] transition-all">
                   01
@@ -535,13 +554,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
             </motion.div>
 
             {/* Step 2 Node */}
-            <motion.div 
+            <motion.div
               whileHover={{ y: -8, scale: 1.02 }}
               transition={{ duration: 0.2 }}
               className="group p-6 rounded-[28px] bg-slate-900/80 backdrop-blur-xl border border-slate-800 hover:border-emerald-500/50 transition-all shadow-2xl flex flex-col justify-between space-y-6 relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-colors" />
-              
+
               <div className="flex items-center justify-between">
                 <div className="w-11 h-11 rounded-2xl bg-slate-950 border border-emerald-500/30 flex items-center justify-center font-mono font-black text-emerald-400 text-sm shadow-inner group-hover:shadow-[0_0_15px_rgba(52,211,153,0.3)] transition-all">
                   02
@@ -560,13 +579,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
             </motion.div>
 
             {/* Step 3 Node */}
-            <motion.div 
+            <motion.div
               whileHover={{ y: -8, scale: 1.02 }}
               transition={{ duration: 0.2 }}
               className="group p-6 rounded-[28px] bg-slate-900/80 backdrop-blur-xl border border-slate-800 hover:border-cyan-500/50 transition-all shadow-2xl flex flex-col justify-between space-y-6 relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 rounded-full blur-2xl group-hover:bg-cyan-500/15 transition-colors" />
-              
+
               <div className="flex items-center justify-between">
                 <div className="w-11 h-11 rounded-2xl bg-slate-950 border border-cyan-500/30 flex items-center justify-center font-mono font-black text-cyan-400 text-sm shadow-inner group-hover:shadow-[0_0_15px_rgba(34,211,238,0.3)] transition-all">
                   03
@@ -585,13 +604,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
             </motion.div>
 
             {/* Step 4 Node */}
-            <motion.div 
+            <motion.div
               whileHover={{ y: -8, scale: 1.02 }}
               transition={{ duration: 0.2 }}
               className="group p-6 rounded-[28px] bg-slate-900/80 backdrop-blur-xl border border-slate-800 hover:border-purple-500/50 transition-all shadow-2xl flex flex-col justify-between space-y-6 relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/15 transition-colors" />
-              
+
               <div className="flex items-center justify-between">
                 <div className="w-11 h-11 rounded-2xl bg-slate-950 border border-purple-500/30 flex items-center justify-center font-mono font-black text-purple-400 text-sm shadow-inner group-hover:shadow-[0_0_15px_rgba(192,132,252,0.3)] transition-all">
                   04
@@ -614,7 +633,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
       </motion.section>
 
       {/* ── FAQ SECTION: TERMINAL QUERY CONSOLE ── */}
-      <motion.section 
+      <motion.section
         initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-50px' }}
@@ -629,7 +648,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
 
         {/* Outer Terminal Window Frame */}
         <div className="rounded-2xl border border-slate-800 bg-slate-900/80 backdrop-blur-2xl shadow-2xl overflow-hidden text-left font-mono">
-          
+
           {/* Terminal Window Header Chrome */}
           <div className="px-4 py-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -656,13 +675,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
               const accent = accentStyles[item.accent];
 
               return (
-                <div 
+                <div
                   key={idx}
-                  className={`rounded-xl border transition-all overflow-hidden ${
-                    isOpen 
-                      ? `${accent.rail} bg-slate-900/90 border-slate-800 shadow-xl` 
+                  className={`rounded-xl border transition-all overflow-hidden ${isOpen
+                      ? `${accent.rail} bg-slate-900/90 border-slate-800 shadow-xl`
                       : 'border-slate-900 bg-slate-950 hover:bg-slate-900/40 hover:border-slate-800'
-                  }`}
+                    }`}
                 >
                   {/* Shell Query Prompt Button */}
                   <button
