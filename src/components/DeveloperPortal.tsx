@@ -63,9 +63,9 @@ export const DeveloperPortal: React.FC = () => {
 
   const copy = (value: string, label: string) => { navigator.clipboard.writeText(value); setCopied(label); setTimeout(() => setCopied(''), 1600); };
 
-  const createRequest = () => {
+  const createRequest = async () => {
     if (!selectedOrg || !subjectReference.trim()) return;
-    const request = VeriFlowStore.createVerificationRequest({ organization: selectedOrg, persona, subjectReference: subjectReference.trim(), subjectEmail: subjectEmail.trim() || undefined, claims: template.claims, allowedDocumentTypes: template.documents, callbackUrl: callbackUrl.trim() || undefined, expiresInHours: 24 });
+    const request = await VeriFlowStore.createRemoteVerificationRequest({ organization: selectedOrg, persona, subjectReference: subjectReference.trim(), subjectEmail: subjectEmail.trim() || undefined, claims: template.claims, allowedDocumentTypes: template.documents, callbackUrl: callbackUrl.trim() || undefined, expiresInHours: 24 });
     setRequests(VeriFlowStore.getVerificationRequests());
     setCreatedRequest(request);
   };

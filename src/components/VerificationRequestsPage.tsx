@@ -74,7 +74,7 @@ export const VerificationRequestsPage: React.FC = () => {
     setFormError('');
   };
 
-  const create = () => {
+  const create = async () => {
     if (!organization) {
       setFormError('Create or connect an organization in the Developer Portal before issuing a request.');
       return;
@@ -96,7 +96,8 @@ export const VerificationRequestsPage: React.FC = () => {
       return;
     }
 
-    const request = VeriFlowStore.createVerificationRequest({
+    try {
+    const request = await VeriFlowStore.createRemoteVerificationRequest({
       organization,
       persona: 'hr',
       subjectReference: subjectReference.trim(),
@@ -112,6 +113,9 @@ export const VerificationRequestsPage: React.FC = () => {
     setLatestRequestId(request.id);
     setCopied(false);
     setFormError('');
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Could not create the short verification link. Check that the backend is running.');
+    }
   };
 
   const copyLatestUrl = async () => {

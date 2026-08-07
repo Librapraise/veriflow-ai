@@ -101,6 +101,36 @@ function setStored<T>(key: string, value: T): void {
 }
 
 export class VeriFlowStore {
+  static async createRemoteVerificationRequest(params: {
+    organization: Organization; persona: OrganizationPersona; subjectReference: string; subjectEmail?: string;
+    claims: ClaimType[]; allowedDocumentTypes: DocumentType[]; callbackUrl?: string; expiresInHours?: number;
+  }): Promise<VerificationRequest> {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const response = await fetch(`${apiUrl}/v1/verification-requests`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${params.organization.apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        organization_name: params.organization.name,
+        subject_reference: params.subjectReference,
+        subject_email: params.subjectEmail,
+        claims: params.claims.map(type => ({ type })),
+        allowed_document_types: params.allowedDocumentTypes,
+        expires_in: (params.expiresInHours || 24) * 3600,
+        callback_url: params.callbackUrl,
+      }),
+    });
+    if (!response.ok) throw new Error((await response.json().catch(() => null))?.detail || 'Could not create short verification link');
+    const data = await response.json();
+    const request: VerificationRequest = {
+      id: data.request_id, organizationId: params.organization.id, organizationName: data.organization_name,
+      persona: params.persona, subjectReference: data.subject_reference, subjectEmail: params.subjectEmail,
+      claims: params.claims, allowedDocumentTypes: data.allowed_document_types, status: data.status,
+      verificationUrl: data.verification_url, callbackUrl: params.callbackUrl,
+      createdAt: data.created_at, expiresAt: data.expires_at,
+    };
+    setStored(STORAGE_KEYS.REQUESTS, [request, ...this.getVerificationRequests()]);
+    return request;
+  }
   static getUserSession(): UserSession {
     const session = getStored(STORAGE_KEYS.USER, DEFAULT_USER);
     const docsCount = this.getDocuments().length;
@@ -213,7 +243,27 @@ export class VeriFlowStore {
     const id = 'req_' + Math.random().toString(36).substring(2, 10);
     const createdAt = new Date();
     const expiresAt = new Date(createdAt.getTime() + (params.expiresInHours || 24) * 60 * 60 * 1000);
-    const verificationUrl = `${window.location.origin}/app/verify?request_id=${id}`;
+    // Include the non-sensitive request policy in the share URL so a candidate
+    // can open it from another browser/device. Production deployments should
+    // replace this with a server-issued, signed request token.
+    const claimCodes: Partial<Record<ClaimType, string>> = {
+      degree_verified: 'dv', currently_employed: 'ce', income_above_threshold: 'it',
+      age_above_18: 'a18', government_id_valid: 'gi', unique_human_wallet: 'uh',
+    };
+    const documentCodes: Partial<Record<DocumentType, string>> = {
+      degree_certificate: 'dc', employment_record: 'er', resume: 'r', payslip: 'p',
+      bank_statement: 'bs', passport: 'pp', drivers_license: 'dl', utility_bill: 'ub',
+    };
+    const compactPolicy = JSON.stringify({
+      c: params.claims.map(value => claimCodes[value] || value),
+      d: params.allowedDocumentTypes.map(value => documentCodes[value] || value),
+      o: params.organization.name,
+      s: params.subjectReference,
+      e: Math.floor(expiresAt.getTime() / 1000),
+    });
+    const policyBytes = new TextEncoder().encode(compactPolicy);
+    const policy = btoa(String.fromCharCode(...policyBytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const verificationUrl = `${window.location.origin}/app/verify?request_id=${id}&p=${policy}`;
     const request: VerificationRequest = {
       id,
       organizationId: params.organization.id,

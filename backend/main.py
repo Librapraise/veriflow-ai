@@ -135,6 +135,7 @@ class VerificationClaimRequest(BaseModel):
     threshold: Optional[float] = None
 
 class CreateVerificationRequest(BaseModel):
+    organization_name: Optional[str] = None
     subject_reference: str = Field(..., example="candidate_10482")
     subject_email: Optional[str] = Field(None, example="candidate@example.com")
     claims: List[VerificationClaimRequest]
@@ -272,27 +273,50 @@ def execute_tee(req: ExecuteTeeRequest, api_key: str = Depends(verify_api_key)):
 def create_verification_request(req: CreateVerificationRequest, api_key: str = Depends(verify_api_key)):
     org = api_org_from_key(api_key)
     request_id = f"req_{uuid.uuid4().hex[:10]}"
-    candidate_token = secrets.token_urlsafe(24)
+    short_code = secrets.token_urlsafe(6)[:8]
+    while any(item.get("short_code") == short_code for item in VERIFICATION_REQUESTS_DB.values()):
+        short_code = secrets.token_urlsafe(6)[:8]
     now = int(time.time())
     frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
     record = {
         "request_id": request_id,
         "organization_id": org["org_id"],
-        "organization_name": org["org_name"],
+        "organization_name": req.organization_name or org["org_name"],
         "subject_reference": req.subject_reference,
         "subject_email": req.subject_email,
         "claims": [claim.dict() for claim in req.claims],
         "allowed_document_types": req.allowed_document_types,
         "status": "awaiting_subject",
-        "verification_url": f"{frontend_origin}/app/verify?request_id={request_id}&token={candidate_token}",
+        "short_code": short_code,
+        "verification_url": f"{frontend_origin}/app/verify/{short_code}",
         "callback_url": req.callback_url,
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now)),
         "expires_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now + req.expires_in)),
-        "candidate_token_hash": hashlib.sha256(candidate_token.encode()).hexdigest(),
         "document_retained": False,
     }
     VERIFICATION_REQUESTS_DB[request_id] = record
     return {key: value for key, value in record.items() if key != "candidate_token_hash"}
+
+@app.get("/v1/public/verification-requests/{short_code}")
+def resolve_public_verification_request(short_code: str, request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    check_rate_limit(f"public-request:{client_ip}")
+    record = next((item for item in VERIFICATION_REQUESTS_DB.values() if item.get("short_code") == short_code), None)
+    if not record:
+        raise HTTPException(status_code=404, detail="Verification request is unavailable")
+    expires_at = time.mktime(time.strptime(record["expires_at"], "%Y-%m-%dT%H:%M:%SZ"))
+    if expires_at <= time.time() or record["status"] in ("expired", "revoked"):
+        raise HTTPException(status_code=410, detail="Verification request has expired or been revoked")
+    return {
+        "request_id": record["request_id"],
+        "organization_name": record["organization_name"],
+        "subject_reference": record["subject_reference"],
+        "claims": [claim["type"] for claim in record["claims"]],
+        "allowed_document_types": record["allowed_document_types"],
+        "status": record["status"],
+        "created_at": record["created_at"],
+        "expires_at": record["expires_at"],
+    }
 
 @app.get("/v1/verification-requests")
 def list_verification_requests(api_key: str = Depends(verify_api_key)):

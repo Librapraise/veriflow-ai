@@ -33,6 +33,8 @@ interface DocumentUploadProps {
   onOpenAttestationModal: () => void;
   simulatedFailAttestation: boolean;
   requestId?: string;
+  requestCode?: string;
+  requestPolicy?: { claims?: string[]; documents?: string[]; organization?: string; subject?: string; expiresAt?: string };
 }
 
 export const DocumentUpload: React.FC<DocumentUploadProps> = ({
@@ -41,6 +43,8 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   onOpenAttestationModal,
   simulatedFailAttestation,
   requestId,
+  requestCode,
+  requestPolicy,
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState<DocumentType>('passport');
@@ -55,9 +59,35 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   const [isAnchoring, setIsAnchoring] = useState<boolean>(false);
   const [anchorError, setAnchorError] = useState<string | null>(null);
   const [hasConsented, setHasConsented] = useState(false);
-  const candidateRequest: VerificationRequest | undefined = requestId
-    ? VeriFlowStore.getVerificationRequests().find(request => request.id === requestId)
-    : undefined;
+  const storedRequest = requestId ? VeriFlowStore.getVerificationRequests().find(request => request.id === requestId) : undefined;
+  const legacyRequest: VerificationRequest | undefined = storedRequest || (requestId && requestPolicy?.claims?.length && requestPolicy.documents?.length ? {
+    id: requestId,
+    organizationId: 'shared_request',
+    organizationName: requestPolicy.organization || 'Verification requester',
+    persona: 'hr',
+    subjectReference: requestPolicy.subject || 'candidate',
+    claims: requestPolicy.claims as ClaimType[],
+    allowedDocumentTypes: requestPolicy.documents as DocumentType[],
+    status: 'awaiting_subject',
+    verificationUrl: window.location.href,
+    createdAt: new Date().toISOString(),
+    expiresAt: requestPolicy.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+  } : undefined);
+  const [candidateRequest, setCandidateRequest] = useState<VerificationRequest | undefined>(legacyRequest);
+
+  useEffect(() => {
+    if (!requestCode) return;
+    const load = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const response = await fetch(`${apiUrl}/v1/public/verification-requests/${encodeURIComponent(requestCode)}`);
+        if (!response.ok) throw new Error((await response.json().catch(() => null))?.detail || 'Verification request is unavailable');
+        const data = await response.json();
+        setCandidateRequest({ id: data.request_id, organizationId: 'shared_request', organizationName: data.organization_name, persona: 'hr', subjectReference: data.subject_reference, claims: data.claims, allowedDocumentTypes: data.allowed_document_types, status: data.status, verificationUrl: window.location.href, createdAt: data.created_at, expiresAt: data.expires_at });
+      } catch (error) { setErrorState(error instanceof Error ? error.message : 'Could not load this verification request.'); }
+    };
+    void load();
+  }, [requestCode]);
 
   useEffect(() => {
     if (!candidateRequest) return;

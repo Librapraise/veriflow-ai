@@ -13,6 +13,7 @@ function readRoute(): AppRoute {
   const params: Record<string, string> = {};
   if (segments[0] === 'verifier' && segments[1]) params.proofId = decodeURIComponent(segments[1]);
   if (segments[0] === 'app' && segments[1]) params.workspace = segments[1];
+  if (segments[0] === 'app' && segments[1] === 'verify' && segments[2]) params.requestCode = decodeURIComponent(segments[2]);
   return { path, params, query: url.searchParams };
 }
 
