@@ -2,6 +2,7 @@ export type DocumentType =
   | 'passport' 
   | 'drivers_license' 
   | 'resume' 
+  | 'employment_record'
   | 'degree_certificate' 
   | 'payslip' 
   | 'bank_statement' 

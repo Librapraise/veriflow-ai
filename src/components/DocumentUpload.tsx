@@ -304,6 +304,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                 {[
                   { id: 'passport', label: 'Passport / ID', icon: ShieldCheck, popular: true },
                   { id: 'payslip', label: 'Payslip', icon: FileText },
+                  { id: 'employment_record', label: 'Employment Record', icon: FileText },
                   { id: 'degree_certificate', label: 'Degree Certificate', icon: FileCheck },
                   { id: 'resume', label: 'Resume', icon: FileText },
                   { id: 'bank_statement', label: 'Bank Statement', icon: FileText },
@@ -318,6 +319,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                         setDocumentType(item.id as DocumentType);
                         if (item.id === 'passport') setClaimType('age_above_18');
                         if (item.id === 'payslip') setClaimType('income_above_threshold');
+                        if (item.id === 'employment_record' || item.id === 'resume') setClaimType('currently_employed');
                         if (item.id === 'degree_certificate') setClaimType('degree_verified');
                       }}
                       className={`p-3 rounded-xl border text-left transition-all relative ${

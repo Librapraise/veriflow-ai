@@ -61,9 +61,9 @@ export function App() {
   };
 
   return <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-teal-500 selection:text-slate-950">
-    {isWorkspace ? <WorkspaceNavbar userSession={userSession} current={route.path} onNavigate={navigate} onOpenAttestation={() => setIsAttestationModalOpen(true)} onDisconnect={disconnect} /> : <PublicNavbar userSession={userSession} onNavigate={navigate} onConnect={connectWallet} />}
-    <main className={isWorkspace ? 'max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-7' : ''}>
-      <AnimatePresence mode="wait"><motion.div key={route.path + route.query.toString()} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }}>{renderPage()}</motion.div></AnimatePresence>
+    {isWorkspace ? <WorkspaceNavbar userSession={userSession} current={route.path} onNavigate={navigate} onOpenAttestation={() => setIsAttestationModalOpen(true)} onDisconnect={disconnect} onConnect={connectWallet} /> : <PublicNavbar userSession={userSession} onNavigate={navigate} onConnect={connectWallet} />}
+    <main className={isWorkspace ? 'max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-7 w-full' : 'w-full'}>
+      <AnimatePresence mode="wait"><motion.div className="w-full" key={route.path + route.query.toString()} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }}>{renderPage()}</motion.div></AnimatePresence>
     </main>
     <AttestationViewer isOpen={isAttestationModalOpen} onClose={() => setIsAttestationModalOpen(false)} simulatedFailAttestation={simulatedFailAttestation} setSimulatedFailAttestation={setSimulatedFailAttestation} />
   </div>;
