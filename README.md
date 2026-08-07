@@ -144,7 +144,7 @@ Authorization header required: `Authorization: Bearer {org_api_key}`
     "kms_status": "VALID_ALLOWLIST",
     "hardware_tee": "Simulated TEE (server-held identity key)",
     "signature_scheme": "ECDSA-secp256k1-EIP191",
-    "tee_identity": "0x3FB763Adfc4190482a2e6758c7842c755B4aE1bE",
+    "tee_identity": "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1",
     "key_released": true
   }
 }
@@ -155,7 +155,7 @@ Authorization header required: `Authorization: Bearer {org_api_key}`
 ## 7. Verification Tools & Contract Details
 
 - **Smart Contract Address**: [`0x2d52308CcABaEC795369A0769861c2b2c75E500E`](https://coston2-explorer.flare.network/address/0x2d52308CcABaEC795369A0769861c2b2c75E500E) on Flare Coston2 Testnet.
-- **Registered TEE Identity Address**: `0x3FB763Adfc4190482a2e6758c7842c755B4aE1bE`
+- **Registered TEE Identity Address**: `0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1`
 - **Code Measurement**: `0xd84e5ababec001f7d94523e6c48f2a3de09060f032abc3744e5262a32fded72d`
 
 ---

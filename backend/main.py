@@ -49,7 +49,7 @@ try:
     account = Account.from_key(ENCLAVE_SECRET_KEY)
     TEE_IDENTITY_ADDRESS = account.address
 except Exception:
-    TEE_IDENTITY_ADDRESS = "0x3FB763Adfc4190482a2e6758c7842c755B4aE1bE"
+    TEE_IDENTITY_ADDRESS = "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
 
 CODE_MEASUREMENT = os.getenv(
     "CODE_MEASUREMENT",
