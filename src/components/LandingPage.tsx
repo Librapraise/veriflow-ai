@@ -161,7 +161,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
 
             <div className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.24em] font-black text-cyan-300"><BadgeCheck className="w-4 h-4" /> Privacy-preserving identity infrastructure</div>
 
-            <h1 className="text-5xl sm:text-6xl lg:text-6xl xl:text-[5.25rem] font-black text-white tracking-[-0.055em] leading-[0.98]">
+            <h1 className="text-5xl sm:text-6xl lg:text-6xl xl:text-[4.85rem] font-black text-white tracking-[-0.055em] leading-[0.98]">
               Verify the truth. <br />
               <span className="bg-gradient-to-r from-teal-300 via-emerald-400 to-cyan-400 bg-clip-text text-transparent">
                 Reveal nothing else.
@@ -506,7 +506,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenAt
             <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-teal-500/20 to-emerald-500/20 text-teal-300 font-bold uppercase tracking-wider">PIPELINE</span>
             <span>Cryptographic Proof Lifecycle</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+          <h2 className="text-3xl sm:text-3xl font-black text-white tracking-tight">
             A Step-by-Step Guide to VeriFlow AI
           </h2>
           <p className="text-xs text-slate-400">

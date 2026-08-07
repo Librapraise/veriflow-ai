@@ -1,168 +1,269 @@
-# VeriFlow AI — Privacy-Preserving Identity & Verification Platform
+# VeriFlow AI
 
-> **Verify Facts. Not Documents.**  
-> Powered by **Flare Confidential Compute** principles & **On-Chain EVM Signature Verification**.
+> **Verify the truth. Reveal nothing else.**
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-veriflow--ai.vercel.app-10b981?style=for-the-badge&logo=vercel)](https://veriflow-ai.vercel.app)
-[![Flare Network](https://img.shields.io/badge/Flare-Coston2_Testnet-teal?style=for-the-badge&logo=ethereum)](https://coston2-explorer.flare.network/address/0x2d52308CcABaEC795369A0769861c2b2c75E500E)
-[![Hackathon](https://img.shields.io/badge/Hackathon-Flare_Summer_Signal_2026-emerald?style=for-the-badge)](https://flare.network)
-[![TEE Protection](https://img.shields.io/badge/TEE-Simulated_+_Signed-blue?style=for-the-badge)](https://flare.network)
+VeriFlow AI is a privacy-preserving document verification platform for fintechs, Web3 DAOs, HR teams, and other organizations that need verified facts without retaining raw documents.
 
----
+Users submit passports, bank statements, payslips, employment records, and degree certificates. VeriFlow extracts only the fields required for a requested claim, evaluates the rule, sanitizes the result, and produces a signed proof that can be independently checked on Flare Coston2.
 
-## 1. Product Summary
+[![Live application](https://img.shields.io/badge/Live-veriflow--ai.vercel.app-2dd4bf?style=for-the-badge&logo=vercel)](https://veriflow-ai.vercel.app)
+[![Flare Coston2](https://img.shields.io/badge/Flare-Coston2-f97316?style=for-the-badge)](https://coston2-explorer.flare.network/address/0x2d52308CcABaEC795369A0769861c2b2c75E500E)
+[![TEE boundary](https://img.shields.io/badge/TEE-Simulated-38bdf8?style=for-the-badge)](#security-boundary)
 
-**VeriFlow AI** enables users to upload sensitive credentials (passports, payslips, degree certificates, bank statements) once into a hardware-isolated Confidential Execution Environment. An AI/MRZ pipeline extracts only the specific fact a third party needs (e.g., *"Is this person over 18?"*), checks it against a rule, and returns a **signed, independently verifiable result** — **never the underlying document or raw PII**.
+## Why VeriFlow
 
-Instead of a company storing full passport scans on central servers, it receives a cryptographically signed `age_above_18: true`.
+Conventional verification workflows collect far more personal information than they need. An employer checking a degree should not need to retain an entire certificate. A lender evaluating a threshold should not need a permanent copy of a bank statement. A DAO checking age eligibility should not receive a passport scan.
 
----
+VeriFlow turns documents into minimal claims such as:
 
-## 2. Real vs. Simulated System Architecture
-
-We believe in **100% cryptographic transparency**. Rather than hiding behind vague hardware claims, here is the exact production boundary:
-
-| Feature / Layer | Implementation in VeriFlow AI Submission | Production Hardware Equivalent |
-|---|---|---|
-| **EVM Smart Contract Verification** | **100% Real Solidity Contract** (`VeriFlowRegistryV2.sol` on Flare Coston2 `0x2d52308CcABaEC795369A0769861c2b2c75E500E`). Executes `ecrecover` on-chain. | Identical on-chain Solidity contract (`VeriFlowRegistryV2.sol`). |
-| **Attestation Signature Scheme** | **100% Real Cryptography**. 165-byte canonical `abi.encodePacked` digest signed with `ECDSA-secp256k1-EIP191`. | Identical secp256k1 ECDSA signature scheme. |
-| **Document Extraction & Rules** | **100% Real ICAO 9303 TD3 MRZ Parser** with 7-3-1 check digit validation, composite check digits, and threshold age comparison. | Identical enclave RAM extraction pipeline. |
-| **Zero-Trust Public Verifier** | **100% Real Browser & CLI Tooling** (`PublicVerifier.tsx` and `scripts/verifyProof.mjs`). Decodes `#<base64url>` proofs with 0 server dependency over Coston2 RPC. | Identical public verifier. |
-| **Key Custody & Hardware TEE** | **Simulated Enclave Identity**. Private key stored in server environment variable (`ENCLAVE_SECRET_KEY`) instead of AMD SEV / Intel SGX VM memory. | Private key held inside hardware TEE VM memory (AMD SEV-SNP / Intel SGX). |
-
----
-
-## 3. Supported Extraction Schemas & Verification Engine
-
-| Document Type | Extracted Schema Fields (Enclave Internal) | Available Claim Checks |
-|---|---|---|
-| **Passport / National ID** | `full_name`, `date_of_birth`, `document_number`, `issuing_country`, `expiry_date` | Age 18+, Age 21+, Age 65+ |
-| **Payslip** | `employer_name`, `role_title`, `pay_period`, `gross_income`, `net_income` | Income above threshold, Active employment |
-| **Degree Certificate** | `full_name`, `institution`, `degree_title`, `field_of_study`, `graduation_date` | Degree verified, Accredited university |
-| **Driver's License** | `full_name`, `date_of_birth`, `license_number`, `expiry_date`, `address_hash` | Government ID valid & unexpired |
-| **Bank Statement** | `account_holder_name`, `statement_period`, `average_balance`, `income_total` | Liquid balance threshold |
-
----
-
-## 4. Hardware Remote Attestation Lifecycle
-
-```
-+-------------------+      Client AES-256      +-------------------------+
-| Browser Client    | -----------------------> | Encrypted Blob Storage  |
-| (SIWE Authenticated|  (Ciphertext blob only)  | (Local / Supabase S3)   |
-+-------------------+                          +-------------------------+
-          |                                                 |
-          | Job Request                                     | Fetch Ciphertext
-          v                                                 v
-+-------------------+     Attestation Quote    +-------------------------+
-| FastAPI Gateway   | -----------------------> | TEE Enclave             |
-+-------------------+                          | (Flare Confidential)    |
-                                               +-------------------------+
-                                                            |
-                                   1. Q_att Quote           | 2. EIP-191 Signed Attestation
-                                   +------------------------+-----------------------+
-                                   |                                                |
-                                   v                                                v
-                       +------------------------+                      +------------------------+
-                       | Key Management (KMS)   |                      | Enclave RAM Only       |
-                       | Validates Code Hash    |                      | - Decrypts Ciphertext  |
-                       | Releases Key           |                      | - MRZ & Schema Ext.    |
-                       +------------------------+                      | - Evaluates Rule       |
-                                                                        | - Wipes Plaintext RAM  |
-                                                                        | - Signs with secp256k1 |
-                                                                        +------------------------+
-                                                                                     |
-                                                                                     v
-                                                                        +------------------------+
-                                                                        | VeriFlowRegistryV2.sol |
-                                                                        | On-Chain ecrecover Check|
-                                                                        +------------------------+
+```text
+age_above_18 = true
+income_above_threshold = true
+degree_verified = true
+currently_employed = false
 ```
 
----
+Every evaluation has one of three explicit outcomes:
 
-## 5. Quickstart & Local Testing
+| Status | Meaning |
+|---|---|
+| `VERIFIED` | The required evidence was extracted and the rule passed. |
+| `DENIED` | The required evidence was extracted and the rule failed. |
+| `UNVERIFIABLE` | The document did not provide enough reliable evidence. |
 
-### 1. Run Cryptographic Parity Suite
+Unknown claims and incomplete credentials fail closed as `UNVERIFIABLE`.
+
+## Product surfaces
+
+### Individuals
+
+- Upload and encrypt documents in the browser.
+- Review the confidential-compute execution pipeline.
+- Approve on-chain settlement through MetaMask.
+- Inspect verification history and reusable proofs.
+- Respond to organization-issued verification requests.
+
+### Organizations and developers
+
+- Create verification requests with permitted document types and claims.
+- Share candidate-facing consent URLs.
+- Configure callback webhooks.
+- Build requests interactively in the Developer Portal.
+- Generate cURL, TypeScript, and Python examples.
+- Inspect simulated webhook events before integrating a production receiver.
+
+### Public proof recipients
+
+- Open a proof by URL or verification ID.
+- Recompute its canonical digest.
+- Recover and validate the enclave signer.
+- Inspect the code measurement and Flare registry state.
+- Verify without receiving the source document.
+
+## Application routes
+
+| Route | Purpose |
+|---|---|
+| `/` | Public landing page and instant sandbox demo |
+| `/verifier` | Public cryptographic proof verifier |
+| `/verifier/:proofId` | Deep-linked proof inspection |
+| `/app/dashboard` | Verification workspace overview |
+| `/app/verify` | Document encryption and claim verification |
+| `/app/history` | Previous verification results |
+| `/app/requests` | B2B verification request builder |
+| `/app/developer` | API builder, SDK examples, and webhook console |
+| `/app/assistant` | VeriFlow conversational assistant |
+
+The verification workspace also supports request links such as:
+
+```text
+/app/verify?request_id=req_example
+```
+
+These links preselect the claims and document types permitted by the organization request.
+
+## Document extraction pipeline
+
+VeriFlow uses a layered extraction strategy rather than relying on one parser:
+
+1. PDF.js extracts text layers from digital PDFs.
+2. Tesseract.js performs OCR for scanned PDFs, photographs, PNGs, and JPEGs.
+3. ICAO TD3 MRZ parsing handles machine-readable passport data.
+4. Schema and regex extractors normalize fields for claim evaluation.
+5. UTF-8 decoding supports compatible text-based documents.
+
+The pipeline supports practical document variations including:
+
+- Passport dates such as `21 OCT / OCT 00`, normalized from document context rather than hardcoded values.
+- Currency labels and symbols such as `CURRENCY: NGN`, `₦`, `$`, `£`, and `€`.
+- PDF text operators, kerning arrays, and OCR-corrupted whitespace.
+- Degree and institution extraction without assuming a particular university.
+- Employment end dates, including `Present`, current dates, and historical end dates.
+
+OCR quality still depends on image resolution, lighting, rotation, blur, and document layout. Uncertain extraction is surfaced as `UNVERIFIABLE` instead of being silently accepted.
+
+## Cryptographic execution flow
+
+```text
+Raw document in browser
+        |
+        v
+Client-side AES-256-GCM encryption
+        |
+        v
+Confidential extraction and claim evaluation
+        |
+        v
+Zero-knowledge data sanitization
+        |
+        v
+Canonical EIP-191 signed attestation
+        |
+        v
+Flare Coston2 registry settlement and public verification
+```
+
+The application visualizes four user-facing stages:
+
+1. Client-side encryption.
+2. Confidential compute processing.
+3. proof and SGX-style attestation generation.
+4. Flare smart-contract registry settlement.
+
+Only the sanitized claim result and proof metadata are intended to leave the confidential execution boundary.
+
+## Security boundary
+
+VeriFlow distinguishes implemented cryptography from simulated infrastructure.
+
+| Layer | Current implementation | Production target |
+|---|---|---|
+| Browser encryption | Real AES-256-GCM through WebCrypto | Same mechanism |
+| Document extraction | Real PDF.js, Tesseract OCR, MRZ, schema extraction, and rule evaluation | Same pipeline inside protected memory |
+| Attestation signature | Real secp256k1 ECDSA with EIP-191 over a canonical 165-byte payload | Same format with hardware-protected keys |
+| Smart-contract verification | Real `ecrecover` verification on Flare Coston2 | Same contract design on the target Flare network |
+| TEE and key custody | Simulated enclave; key custody depends on local/server execution mode | Hardware-backed AMD SEV-SNP or Intel SGX environment |
+| Webhook console | Interactive simulator | Durable signed webhook delivery with retries |
+
+The project does not claim that the current hackathon deployment provides a production hardware TEE. See [SECURITY.md](SECURITY.md) for the detailed trust model.
+
+## Flare deployment
+
+- **Network:** Flare Coston2
+- **Chain ID:** `114`
+- **Registry contract:** [`0x2d52308CcABaEC795369A0769861c2b2c75E500E`](https://coston2-explorer.flare.network/address/0x2d52308CcABaEC795369A0769861c2b2c75E500E)
+- **Registered TEE identity:** `0x3FB763Adfc4190482a2e6758c7842c755B4aE1bE`
+- **Code measurement:** `0xd84e5ababec001f7d94523e6c48f2a3de09060f032abc3744e5262a32fded72d`
+- **Signature scheme:** `ECDSA-secp256k1-EIP191`
+
+The canonical attestation is 165 bytes and binds the claim, outcome, document commitment, timestamp, code measurement, and signer-compatible proof fields into one deterministic digest.
+
+## Technology stack
+
+- React 19, TypeScript, Vite, and Tailwind CSS
+- React Router and Framer Motion
+- ethers.js and MetaMask/SIWE wallet flows
+- PDF.js and Tesseract.js
+- FastAPI backend
+- Solidity registry contract on Flare Coston2
+
+## Local development
+
+### Requirements
+
+- Node.js 20 or newer
+- npm
+- Python 3.10 or newer for the optional backend
+- MetaMask for wallet and settlement flows
+
+### Frontend
+
 ```bash
-# Verify TypeScript <-> Solidity <-> Python digest parity (6/6 tests)
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`.
+
+Create a local environment file from [.env.example](.env.example) and configure the required RPC, contract, and backend values for your environment.
+
+### Production build
+
+```bash
+npm run build
+npm run preview
+```
+
+### Backend
+
+```bash
+python -m pip install -r backend/requirements.txt
+python backend/main.py
+```
+
+The local API documentation is available at `http://localhost:8000/docs`.
+
+## Verification and quality checks
+
+```bash
+npm run lint
+npm run build
 node scripts/testSigningParity.mjs
-```
-
-### 2. Run Standalone Proof Verifier over Coston2 RPC
-```bash
-# Verify proof fixture directly against Flare Coston2 testnet
 node scripts/verifyProof.mjs scripts/testProofFixture.json
 ```
 
-### 3. Launch Frontend dApp
-```bash
-# Install dependencies
-npm install
+The signing parity suite checks consistency between the application, backend, and Solidity encoding assumptions. The standalone verifier checks a proof fixture against Flare Coston2.
 
-# Launch Vite Web Application
-npm run dev
-```
-Open **`http://localhost:5173`** in your browser.
+## Developer API workflow
 
-### 4. Launch FastAPI Python Backend
-```bash
-# Install python requirements
-python3 -m pip install -r backend/requirements.txt
+A typical B2B integration follows this sequence:
 
-# Run FastAPI Gateway
-python3 backend/main.py
-```
-Open **`http://localhost:8000/docs`** for interactive Swagger API documentation.
+1. The organization creates a verification request specifying claims, permitted document types, expiry, and an optional callback URL.
+2. VeriFlow returns a candidate-facing request URL.
+3. The candidate opens the URL, consents, submits an allowed document, and approves verification.
+4. The organization receives or retrieves only the sanitized result and cryptographic proof.
+5. The proof can be independently inspected through `/verifier/:proofId`.
 
----
+Example request shape:
 
-## 6. Developer REST API Overview
-
-Authorization header required: `Authorization: Bearer {org_api_key}`
-
-### Example Request (`POST /v1/tee/execute`)
 ```json
 {
-  "wallet_address": "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
-  "claim_type": "age_above_18",
-  "document_id": "doc_pas_9f2c1a"
+  "claims": ["degree_verified", "currently_employed"],
+  "allowed_document_types": ["degree_certificate", "employment_record"],
+  "callback_url": "https://example.com/webhooks/veriflow",
+  "expires_in": 86400
 }
 ```
 
-### Example Response (`200 OK`)
-```json
-{
-  "verification_id": "ver_7ab1c9e4",
-  "claim": "age_above_18",
-  "result": true,
-  "timestamp": "2026-08-05T04:15:02Z",
-  "signature": "0x98f2a1b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f61b",
-  "attestation_id": "att_22f09a1",
-  "attestation_quote": {
-    "enclave_measurement": "0xd84e5ababec001f7d94523e6c48f2a3de09060f032abc3744e5262a32fded72d",
-    "kms_status": "VALID_ALLOWLIST",
-    "hardware_tee": "Simulated TEE (server-held identity key)",
-    "signature_scheme": "ECDSA-secp256k1-EIP191",
-    "tee_identity": "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1",
-    "key_released": true
-  }
-}
-```
+Use the live Developer Portal at `/app/developer` for request construction and generated SDK examples. API persistence and webhook delivery in the current demo should not be treated as production-grade durable infrastructure.
 
----
+## Conversational assistant
 
-## 7. Verification Tools & Contract Details
+The assistant helps users navigate VeriFlow, understand claim outcomes, locate verification tools, and learn the privacy model. Chat history is persisted locally so refreshing the page does not immediately clear the conversation.
 
-- **Smart Contract Address**: [`0x2d52308CcABaEC795369A0769861c2b2c75E500E`](https://coston2-explorer.flare.network/address/0x2d52308CcABaEC795369A0769861c2b2c75E500E) on Flare Coston2 Testnet.
-- **Registered TEE Identity Address**: `0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1`
-- **Code Measurement**: `0xd84e5ababec001f7d94523e6c48f2a3de09060f032abc3744e5262a32fded72d`
+Its current responses are primarily product-aware and deterministic. A production roadmap would add a policy-constrained model, retrieval over organization documentation, explicit tool permissions, and auditable response provenance.
 
----
+## Current limitations
 
-## 8. Project Documentation Index
+- Hardware-backed enclave execution and remote quote verification remain production roadmap work.
+- OCR can be slow and is sensitive to scan quality.
+- Browser-side OCR currently defaults primarily to English.
+- Demo storage and backend state are not a substitute for a durable production database.
+- The webhook console simulates delivery; production callbacks require signed delivery, retries, idempotency, and audit logs.
+- Smart-contract settlement requires the correct wallet network and enough Coston2 test tokens.
 
-- **[SUBMISSION.md](file:///c:/Users/DELL/OneDrive/Documents/New%20folder/SUBMISSION.md):** Full Hackathon Submission Document.
-- **[SECURITY.md](file:///c:/Users/DELL/OneDrive/Documents/New%20folder/SECURITY.md):** Security Audit & Disclosure.
-- **[QUICKSTART.md](file:///c:/Users/DELL/OneDrive/Documents/New%20folder/QUICKSTART.md):** Complete live testing sequence and hackathon demo script.
-- **[contracts/VeriFlowRegistryV2.sol](file:///c:/Users/DELL/OneDrive/Documents/New%20folder/contracts/VeriFlowRegistryV2.sol):** On-chain signature verification smart contract deployed to Flare Coston2 Testnet.
+## Deployed resources
+
+- **Live application:** https://veriflow-ai.vercel.app
+- **Backend API:** https://veriflow-ai-production.up.railway.app
+- **Swagger:** https://veriflow-ai-production.up.railway.app/docs
+- **Demo video:** https://www.loom.com/share/0d833a2bcff943cab89c4499e93be817
+- **Hackathon submission:** [SUBMISSION.md](SUBMISSION.md)
+- **Security model:** [SECURITY.md](SECURITY.md)
+- **Quickstart and demo flow:** [QUICKSTART.md](QUICKSTART.md)
+- **Deployment guide:** [DEPLOYMENT.md](DEPLOYMENT.md)
+- **Registry contract:** [contracts/VeriFlowRegistryV2.sol](contracts/VeriFlowRegistryV2.sol)
+
+## License and responsible use
+
+VeriFlow is a hackathon prototype. Do not use it as the sole basis for employment, lending, identity, immigration, or other high-impact decisions without production security review, applicable legal safeguards, human appeal processes, and independent verification of the complete deployment.
