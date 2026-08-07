@@ -2,7 +2,7 @@
  * VeriFlow AI — Typed API Client for FastAPI Gateway
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
 const DEFAULT_DEMO_KEY = 'vf_live_demo1234567890abcdef12345678';
 
 export interface TeeIdentityResponse {

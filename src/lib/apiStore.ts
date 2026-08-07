@@ -3,11 +3,11 @@
  * Persists documents, verifications, organizations, and API logs.
  */
 
-import type { 
-  EncryptedDocumentMetadata, 
-  VerificationReport, 
-  Organization, 
-  ApiLog, 
+import type {
+  EncryptedDocumentMetadata,
+  VerificationReport,
+  Organization,
+  ApiLog,
   UserSession,
   ClaimType,
   DocumentType,
@@ -105,7 +105,7 @@ export class VeriFlowStore {
     organization: Organization; persona: OrganizationPersona; subjectReference: string; subjectEmail?: string;
     claims: ClaimType[]; allowedDocumentTypes: DocumentType[]; callbackUrl?: string; expiresInHours?: number;
   }): Promise<VerificationRequest> {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
     let response: Response;
     try {
       response = await fetch(`${apiUrl}/v1/verification-requests`, {
@@ -140,12 +140,12 @@ export class VeriFlowStore {
     const session = getStored(STORAGE_KEYS.USER, DEFAULT_USER);
     const docsCount = this.getDocuments().length;
     const verifsCount = this.getVerifications().length;
-    
+
     // Dynamically calculate trustScore: 0 when empty, or 70 base + 5 per doc + 5 per verif up to 100
-    const calculatedScore = (docsCount === 0 && verifsCount === 0) 
-      ? 0 
+    const calculatedScore = (docsCount === 0 && verifsCount === 0)
+      ? 0
       : Math.min(100, 70 + (docsCount * 5) + (verifsCount * 5));
-    
+
     return {
       ...session,
       documentsCount: docsCount,
@@ -166,7 +166,7 @@ export class VeriFlowStore {
     const docs = this.getDocuments();
     const updated = [doc, ...docs];
     setStored(STORAGE_KEYS.DOCUMENTS, updated);
-    
+
     // Update user stats
     const user = this.getUserSession();
     user.documentsCount = updated.length;
@@ -322,10 +322,10 @@ export class VeriFlowStore {
       const overallStatus = !allClaimsComplete
         ? 'processing'
         : claimResults.some(item => item.status === 'UNVERIFIABLE')
-        ? 'unverifiable'
-        : claimResults.every(item => item.result)
-        ? 'verified'
-        : 'denied';
+          ? 'unverifiable'
+          : claimResults.every(item => item.result)
+            ? 'verified'
+            : 'denied';
       return { ...request, claimResults, status: overallStatus as VerificationRequest['status'], verificationId: report.id };
     });
     setStored(STORAGE_KEYS.REQUESTS, requests);

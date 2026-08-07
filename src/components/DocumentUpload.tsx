@@ -79,7 +79,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     if (!requestCode) return;
     const load = async () => {
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
         const response = await fetch(`${apiUrl}/v1/public/verification-requests/${encodeURIComponent(requestCode)}`);
         if (!response.ok) throw new Error((await response.json().catch(() => null))?.detail || 'Verification request is unavailable');
         const data = await response.json();
