@@ -106,19 +106,24 @@ export class VeriFlowStore {
     claims: ClaimType[]; allowedDocumentTypes: DocumentType[]; callbackUrl?: string; expiresInHours?: number;
   }): Promise<VerificationRequest> {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    const response = await fetch(`${apiUrl}/v1/verification-requests`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${params.organization.apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        organization_name: params.organization.name,
-        subject_reference: params.subjectReference,
-        subject_email: params.subjectEmail,
-        claims: params.claims.map(type => ({ type })),
-        allowed_document_types: params.allowedDocumentTypes,
-        expires_in: (params.expiresInHours || 24) * 3600,
-        callback_url: params.callbackUrl,
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${apiUrl}/v1/verification-requests`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${params.organization.apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organization_name: params.organization.name,
+          subject_reference: params.subjectReference,
+          subject_email: params.subjectEmail,
+          claims: params.claims.map(type => ({ type })),
+          allowed_document_types: params.allowedDocumentTypes,
+          expires_in: (params.expiresInHours || 24) * 3600,
+          callback_url: params.callbackUrl,
+        }),
+      });
+    } catch {
+      throw new Error(`Cannot reach the VeriFlow API at ${apiUrl}. Start the local FastAPI backend or deploy the latest backend before generating a short subject link.`);
+    }
     if (!response.ok) throw new Error((await response.json().catch(() => null))?.detail || 'Could not create short verification link');
     const data = await response.json();
     const request: VerificationRequest = {
