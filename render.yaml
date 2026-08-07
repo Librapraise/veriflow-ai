@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: veriflow-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: TEE_MODE
+        value: simulator
+      - key: TEE_IDENTITY_ADDRESS
+        value: "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
+      - key: CODE_MEASUREMENT
+        value: "0xd84e5ababec001f7d94523e6c48f2a3de09060f032abc3744e5262a32fded72d"
+      - key: REGISTRY_ADDRESS
+        value: "0x2d52308CcABaEC795369A0769861c2b2c75E500E"
