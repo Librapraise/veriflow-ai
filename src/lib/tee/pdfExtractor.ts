@@ -21,7 +21,18 @@ function isImage(fileName: string, mimeType?: string): boolean {
 }
 
 async function createOcrWorker(): Promise<Worker> {
-  return createWorker('eng');
+  // Explicit CDN paths for Tesseract.js v7 so the worker resolves in production.
+  // A 10-second race prevents a hung worker from stalling the whole pipeline.
+  return Promise.race([
+    createWorker('eng', 1, {
+      workerPath: 'https://unpkg.com/tesseract.js@7/dist/worker.min.js',
+      langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+      corePath: 'https://unpkg.com/tesseract.js-core@6/tesseract-core-simd-mt.wasm.js',
+    }),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Tesseract worker init timeout')), 10000)
+    ),
+  ]);
 }
 
 async function recognizeImage(source: Blob | HTMLCanvasElement, worker?: Worker): Promise<string> {
@@ -97,10 +108,13 @@ export async function extractDocumentText(
     }
 
     try {
-      const ocrText = await ocrPdf(buffer);
+      const ocrText = await Promise.race([
+        ocrPdf(buffer),
+        new Promise<string>((_, reject) => setTimeout(() => reject(new Error('OCR timeout')), 15000)),
+      ]) as string;
       if (ocrText.trim().length >= MIN_EXTRACTED_TEXT_LENGTH) return ocrText;
     } catch {
-      // The legacy parser can still recover text from simple generated PDFs.
+      // OCR timed out or failed — the legacy parser can still recover text from simple generated PDFs.
     }
 
     const legacyText = await extractPdfBufferText(buffer);
