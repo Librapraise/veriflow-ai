@@ -354,4 +354,5 @@ def revoke_verification(verification_id: str, api_key: str = Depends(verify_api_
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
