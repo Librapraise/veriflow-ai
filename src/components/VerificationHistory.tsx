@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   FileText, 
   ShieldCheck, 
@@ -33,11 +34,7 @@ export const VerificationHistory: React.FC<VerificationHistoryProps> = ({
 
   const getProofShareUrl = (report: VerificationReport): string => {
     const origin = window.location.origin;
-    if (report.proof) {
-      const b64 = btoa(JSON.stringify(report.proof));
-      return `${origin}#${b64}`;
-    }
-    return `${origin}?verify_id=${report.id}`;
+    return `${origin}/verifier?verify_id=${report.id}`;
   };
 
   useEffect(() => {
@@ -157,9 +154,9 @@ export const VerificationHistory: React.FC<VerificationHistoryProps> = ({
       </div>
 
       {/* Shareable Report Detail Modal */}
-      {selectedReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
+      {selectedReport && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in overflow-y-auto">
+          <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl my-auto">
             
             <div className="flex items-center justify-between pb-4 border-b border-slate-800">
               <div className="flex items-center space-x-3">
@@ -242,7 +239,8 @@ export const VerificationHistory: React.FC<VerificationHistoryProps> = ({
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

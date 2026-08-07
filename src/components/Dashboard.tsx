@@ -39,8 +39,8 @@ const StatsCard: React.FC<{ label: string; value: string | number; growth: strin
 );
 
 // --- Log Item Component ---
-const LogItem: React.FC<{ type: string; date: string; status: 'verified' | 'failed' | 'denied' }> = ({ type, date, status }) => (
-  <div className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-all group border border-transparent hover:border-white/5">
+const LogItem: React.FC<{ type: string; date: string; status: 'verified' | 'failed' | 'denied'; onClick: () => void }> = ({ type, date, status, onClick }) => (
+  <div onClick={onClick} className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-all group border border-transparent hover:border-white/5 cursor-pointer">
     <div className="flex items-center gap-3">
       <div className={`w-2.5 h-2.5 rounded-full ${status === 'verified' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-rose-500'}`} />
       <div>
@@ -48,7 +48,7 @@ const LogItem: React.FC<{ type: string; date: string; status: 'verified' | 'fail
         <p className="text-[10px] text-slate-400 uppercase font-mono tracking-tight">{date}</p>
       </div>
     </div>
-    <ExternalLink size={14} className="text-slate-500 group-hover:text-slate-300 cursor-pointer transition-colors" />
+    <ExternalLink size={14} className="text-slate-500 group-hover:text-slate-300 transition-colors" />
   </div>
 );
 
@@ -217,6 +217,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   type={v.claimTitle} 
                   date={new Date(v.verifiedAt).toLocaleDateString()} 
                   status={v.result ? 'verified' : 'denied'} 
+                  onClick={() => setActiveTab('history')}
                 />
               ))}
             </div>

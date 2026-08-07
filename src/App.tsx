@@ -65,8 +65,12 @@ export function App() {
   })();
 
   const renderPage = () => {
+    const hasHashProof = typeof window !== 'undefined' && window.location.hash.length > 20;
+    const hasQueryVerifyId = route.query.has('verify_id');
+    if (hasHashProof || hasQueryVerifyId || route.path === '/verifier' || route.path.startsWith('/verifier/')) {
+      return <PublicVerifier proofPayload={proofReport ? JSON.stringify(proofReport) : null} />;
+    }
     if (route.path === '/') return <LandingPage setActiveTab={navigateTab} onOpenAttestationModal={() => setIsAttestationModalOpen(true)} />;
-    if (route.path === '/verifier' || route.path.startsWith('/verifier/')) return <PublicVerifier proofPayload={proofReport ? JSON.stringify(proofReport) : null} />;
     if (route.path === '/app/dashboard') return <Dashboard userSession={userSession} setActiveTab={navigateTab} onOpenAttestationModal={() => setIsAttestationModalOpen(true)} />;
     if (route.path === '/app/verify' || route.path.startsWith('/app/verify/')) return <DocumentUpload setUserSession={setUserSession} onOpenAttestationModal={() => setIsAttestationModalOpen(true)} simulatedFailAttestation={simulatedFailAttestation} requestId={requestId} requestCode={requestCode} requestPolicy={requestPolicy} />;
     if (route.path === '/app/history') return <VerificationHistory onOpenAttestationModal={() => setIsAttestationModalOpen(true)} />;

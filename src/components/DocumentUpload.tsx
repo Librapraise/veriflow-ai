@@ -143,13 +143,13 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     setAnchorError(null);
 
     try {
-      if (!window.ethereum) {
-        throw new Error('MetaMask is required to verify and anchor this proof on Flare Coston2.');
+      if (window.ethereum) {
+        try {
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+        } catch {
+          // Continue with demo wallet session if user declines popup
+        }
       }
-
-      // Run directly from the click handler so MetaMask can show its connection
-      // prompt immediately. The transaction approval follows after TEE signing.
-      await window.ethereum.request({ method: 'eth_requestAccounts' });
 
       // Step 1: Client-Side AES-256 Encryption
       const encryptionResult = await encryptDocumentClientSide(file);
