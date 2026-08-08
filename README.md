@@ -255,13 +255,11 @@ Its current responses are primarily product-aware and deterministic. A productio
 ## Deployed resources
 
 - **Live application:** https://veriflow-ai.vercel.app
-- **Backend API:** https://veriflow-ai-production.up.railway.app
-- **Swagger:** https://veriflow-ai-production.up.railway.app/docs
-- **Demo video:** https://dorahacks.io/navi?to=/hackathon/agents-onchain/detail
-- **Hackathon submission:** [SUBMISSION.md](SUBMISSION.md)
+- **Backend API:** https://veriflow-ai.onrender.com
+- **Swagger:** https://veriflow-ai.onrender.com/docs
+- **Demo video:** https://youtu.be/aEWvwmynR04
 - **Security model:** [SECURITY.md](SECURITY.md)
 - **Quickstart and demo flow:** [QUICKSTART.md](QUICKSTART.md)
-- **Deployment guide:** [DEPLOYMENT.md](DEPLOYMENT.md)
 - **Registry contract:** [contracts/VeriFlowRegistryV2.sol](contracts/VeriFlowRegistryV2.sol)
 
 ## License and responsible use
